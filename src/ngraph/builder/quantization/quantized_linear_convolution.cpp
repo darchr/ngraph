@@ -53,7 +53,7 @@ namespace ngraph
                 // TODO: need to handle the case where offset is provided (assuming 0)
                 // TODO: need to establish cross-nGraph view of scale (mult or div)
                 auto two = make_constant(element::f32, input_scale->get_shape(), 2);
-                auto requantization_scale = (input_scale * filter_scale) / (two * output_scale);
+                auto requantization_scale = (input_scale * filter_scale) / (output_scale);
 
                 return make_shared<op::QuantizedConvolution>(input,
                                                              filter,
@@ -87,7 +87,7 @@ namespace ngraph
                 // TODO: need to handle the case where offset is provided (assuming 0)
                 // TODO: need to establish cross-nGraph view of scale (mult or div)
                 auto two = make_constant(element::f32, input_scale->get_shape(), 2);
-                auto requantization_scale = (input_scale * filter_scale) / (two * output_scale);
+                auto requantization_scale = (input_scale * filter_scale) / (output_scale);
 
                 if (bias->get_element_type() != element::i32)
                 {
