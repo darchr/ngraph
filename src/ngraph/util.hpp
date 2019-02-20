@@ -31,7 +31,9 @@
 #include "ngraph/node_vector.hpp"
 #include "ngraph/shape.hpp"
 
+#ifdef NGRAPH_PMDK_ENABLE
 #include "libpmemobj.h"
+#endif
 
 namespace ngraph
 {
@@ -39,6 +41,37 @@ namespace ngraph
     class Function;
     class NodeMap;
     class stopwatch;
+
+////////////////////////////////////////////////////////////////////////////////////////////
+    // Pool Manager for PMDK
+////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef NGRAPH_PMDK_ENABLE
+    class PoolManager
+    {
+    public:
+        static PoolManager* getinstance();
+        void setpool(std::string file);
+        PMEMobjpool* getpool();
+        void createpool(size_t poolsize);
+        void openpool();
+        void closepool();
+        void enablepmem();
+        void disablepmem();
+        bool isenabled();
+
+    private:
+        std::string name;
+        PMEMobjpool* pool;
+        bool pmem_enabled = false;
+
+        // We're doing the trick from PCM where we have a static instance of this
+        // object that will be referenced when memory needs to be allocated or freed.
+        static PoolManager* instance;
+    };
+#endif
+////////////////////////////////////////////////////////////////////////////////////////////
+    // end PMDK
+////////////////////////////////////////////////////////////////////////////////////////////
 
     namespace runtime
     {
@@ -186,7 +219,7 @@ namespace ngraph
     void* aligned_alloc(size_t alignment, size_t size);
     void aligned_free(void*);
 
-    void* ngraph_malloc(size_t size);
+    void* ngraph_malloc(size_t size, bool persistent = false);
     void ngraph_free(void*);
 
     size_t round_up(size_t size, size_t alignment);
