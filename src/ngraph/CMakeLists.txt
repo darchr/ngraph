@@ -249,10 +249,13 @@ if (NOT WIN32)
     target_link_libraries(ngraph PUBLIC dl pthread)
 endif()
 
+target_link_libraries(ngraph PRIVATE libpmemobj)
+
 if (NGRAPH_ONNX_IMPORT_ENABLE)
     target_sources(ngraph PRIVATE $<TARGET_OBJECTS:onnx_import_interface>)
     target_link_libraries(ngraph PRIVATE onnx_import)
 endif()
+
 
 #-----------------------------------------------------------------------------------------------
 # Installation logic...
