@@ -20,7 +20,7 @@ ExternalProject_Add(
     # Disable install step
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND ${MAKE_EXE} -j all
+    BUILD_COMMAND ${MAKE_EXE} CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} -j all
     INSTALL_COMMAND ${MAKE_EXE} install prefix=${PMDK_INSTALL_DIR}
     BUILD_IN_SOURCE TRUE
     # Setup directories
