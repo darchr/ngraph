@@ -243,16 +243,22 @@ elseif(APPLE)
     set_property(TARGET ngraph APPEND_STRING PROPERTY LINK_FLAGS " -Wl,-rpath,@loader_path")
 endif()
 
+
 # Defines macro in C++ to load backend plugin
 target_include_directories(ngraph PUBLIC "${NGRAPH_INCLUDE_PATH}")
 if (NOT WIN32)
     target_link_libraries(ngraph PUBLIC dl pthread)
 endif()
 
+if (NGRAPH_PMDK_ENABLE)
+   target_link_libraries(ngraph PRIVATE libpmemobj)
+endif()
+
 if (NGRAPH_ONNX_IMPORT_ENABLE)
     target_sources(ngraph PRIVATE $<TARGET_OBJECTS:onnx_import_interface>)
     target_link_libraries(ngraph PRIVATE onnx_import)
 endif()
+
 
 #-----------------------------------------------------------------------------------------------
 # Installation logic...

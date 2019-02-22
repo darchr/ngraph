@@ -120,6 +120,8 @@ option(NGRAPH_PYTHON_BUILD_ENABLE "Enable build nGraph python package wheel" FAL
 option(NGRAPH_DISTRIBUTED_MLSL_ENABLE "Add distributed MLSL mode for CPU only backend" FALSE)
 option(NGRAPH_DISTRIBUTED_OMPI_ENABLE "Add distributed Open-MPI mode for all backend" FALSE)
 option(NGRAPH_PLAIDML_ENABLE "Enable the PlaidML backend" ${PLAIDML_FOUND})
+# Default to TRUE for now - add compile switches later
+option(NGRAPH_PMDK_ENABLE "Enable PMDK for Persistent Memory Allocation" TRUE)
 
 if (NGRAPH_GPUH_ENABLE)
     set(NGRAPH_GPU_ENABLE TRUE)
@@ -286,6 +288,10 @@ if (NOT DEFINED NGRAPH_TBB_ENABLE)
     set(NGRAPH_TBB_ENABLE ${NGRAPH_CPU_ENABLE})
 endif()
 
+if (NGRAPH_PMDK_ENABLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNGRAPH_PMDK_ENABLE")
+endif()
+
 add_custom_target(style-check
     COMMAND ${CMAKE_COMMAND}
     -DNGRAPH_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
@@ -327,6 +333,10 @@ set(EXTERNAL_INSTALL_DIR ${CMAKE_BINARY_DIR}/external)
 
 if(NOT DEFINED EXTERNAL_PROJECTS_ROOT)
     set(EXTERNAL_PROJECTS_ROOT ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+
+if (NGRAPH_PMDK_ENABLE)
+    include(cmake/external_pmdk.cmake)
 endif()
 
 if (NGRAPH_ONNX_IMPORT_ENABLE)
