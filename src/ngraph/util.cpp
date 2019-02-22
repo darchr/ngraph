@@ -34,8 +34,6 @@
 
 #include <iostream>
 
-#include "libpmemobj.h"
-
 using namespace std;
 using namespace ngraph;
 
@@ -184,7 +182,6 @@ void ngraph::aligned_free(void* p)
 
 void* ngraph::ngraph_malloc(size_t size)
 {
-    const char* test = pmemobj_check_version(2, 4);
     auto ptr = malloc(size);
     if (size != 0 && !ptr)
     {

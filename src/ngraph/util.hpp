@@ -31,8 +31,6 @@
 #include "ngraph/node_vector.hpp"
 #include "ngraph/shape.hpp"
 
-#include "libpmemobj.h"
-
 namespace ngraph
 {
     class Node;
