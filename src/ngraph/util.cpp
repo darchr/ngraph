@@ -39,64 +39,6 @@
 using namespace std;
 using namespace ngraph;
 
-////////////////////////////////////////////////////////////////////////////////////////////
-// PMDK
-////////////////////////////////////////////////////////////////////////////////////////////
-PoolManager* PoolManager::instance = NULL;
-
-PoolManager* PoolManager::getinstance()
-{
-    if (instance) return instance;
-    return instance = new PoolManager();
-}
-
-void PoolManager::setpool(std::string file)
-{
-    name = file;
-}
-
-PMEMobjpool* PoolManager::getpool()
-{
-    return pool;
-}
-
-// These probably some checking to do for null pointers and stuff, but we're going 
-// to YOLO it for now.
-void PoolManager::createpool(size_t poolsize)
-{
-    PMEMobjpool* newpool = pmemobj_create(name.c_str(), "", poolsize, 0666);
-    pool = newpool;
-}
-
-void PoolManager::openpool()
-{
-    PMEMobjpool* newpool = pmemobj_open(name.c_str(), "");
-    pool = newpool;
-}
-
-void PoolManager::closepool()
-{
-    pmemobj_close(pool);
-}
-
-void PoolManager::enablepmem()
-{
-    pmem_enabled = true;
-}
-
-void PoolManager::disablepmem()
-{
-    pmem_enabled = false;
-}
-
-bool PoolManager::isenabled()
-{
-    return pmem_enabled;
-}
-////////////////////////////////////////////////////////////////////////////////////////////
-// END PMDK
-////////////////////////////////////////////////////////////////////////////////////////////
-
 std::string ngraph::to_cplusplus_sourcecode_literal(bool val)
 {
     return val ? "true" : "false";
@@ -240,49 +182,9 @@ void ngraph::aligned_free(void* p)
 #endif
 }
 
-#ifdef NGRAPH_PMDK_ENABLE
-// For now, by default allocate to PMEM.
-// Note that this function is not run-time critical, so se don't have to optimize it
-// a whole lot.
-void* ngraph::ngraph_malloc(size_t size, bool persistent)
-{
-    PoolManager* manager = PoolManager::getinstance();
-    if (manager->isenabled() || persistent)
-    {
-        PMEMoid oidp;
-        auto yolo = pmemobj_zalloc(manager->getpool(), &oidp, size, 0);
-        return pmemobj_direct(oidp);
-    } else {
-        auto ptr = malloc(size);
-        if (size != 0 && !ptr)
-        {
-            NGRAPH_ERR << "malloc failed to allocate memory of size " << size;
-            throw std::bad_alloc();
-        }
-        return ptr;
-    }
-}
-
-void ngraph::ngraph_free(void* ptr)
-{
-    // Need to handle the case where pmem enablement switched between when an object was
-    // allocated and when it is freed. To do this, we check if `ptr` belongs to a pool.
-    // If so, we deallocated it using `pmemobj_free`. Otherwise, perform a normal free.
-    if (pmemobj_pool_by_ptr(ptr) != NULL)
-    {
-        PMEMoid oidp = pmemobj_oid(ptr);
-        pmemobj_free(&oidp);
-    } else {
-        if (ptr)
-        {
-            free(ptr);
-        }
-    }
-}
-
-#else
 void* ngraph::ngraph_malloc(size_t size)
 {
+    const char* test = pmemobj_check_version(2, 4);
     auto ptr = malloc(size);
     if (size != 0 && !ptr)
     {
@@ -299,7 +201,6 @@ void ngraph::ngraph_free(void* ptr)
         free(ptr);
     }
 }
-#endif
 
 size_t ngraph::round_up(size_t size, size_t alignment)
 {
