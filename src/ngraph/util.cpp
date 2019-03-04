@@ -66,7 +66,6 @@ PMEMobjpool* PoolManager::getpool()
 void PoolManager::createpool(size_t poolsize)
 {
     PMEMobjpool* newpool = pmemobj_create(name.c_str(), "", poolsize, 0666);
-    std::cout << "Pool Pointer: " << newpool << std::endl;
     pool = newpool;
 }
 
@@ -260,7 +259,6 @@ void* ngraph::ngraph_malloc(size_t size, bool persistent)
             NGRAPH_ERR << strerror(errno) << std::endl;
         }
         return ptr;
-
     } else {
         auto ptr = malloc(size);
         if (size != 0 && !ptr)
