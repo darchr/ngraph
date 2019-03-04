@@ -22,6 +22,7 @@
 #include <map>
 #include <numeric>
 #include <unordered_set>
+#include <cerrno>
 
 #include "ngraph/function.hpp"
 #include "ngraph/graph_util.hpp"
@@ -65,6 +66,7 @@ PMEMobjpool* PoolManager::getpool()
 void PoolManager::createpool(size_t poolsize)
 {
     PMEMobjpool* newpool = pmemobj_create(name.c_str(), "", poolsize, 0666);
+    std::cout << "Pool Pointer: " << newpool << std::endl;
     pool = newpool;
 }
 
@@ -246,12 +248,19 @@ void ngraph::aligned_free(void* p)
 // a whole lot.
 void* ngraph::ngraph_malloc(size_t size, bool persistent)
 {
+    std::cout << "Allocation Size: " << size << std::endl;
     PoolManager* manager = PoolManager::getinstance();
     if (manager->isenabled() || persistent)
     {
         PMEMoid oidp;
         auto yolo = pmemobj_zalloc(manager->getpool(), &oidp, size, 0);
-        return pmemobj_direct(oidp);
+        void* ptr =  pmemobj_direct(oidp);
+
+        if (yolo == -1) {
+            NGRAPH_ERR << strerror(errno) << std::endl;
+        }
+        return ptr;
+
     } else {
         auto ptr = malloc(size);
         if (size != 0 && !ptr)
