@@ -153,6 +153,7 @@ set (SRC
     pass/serialize.cpp
     pass/zero_dim_tensor_elimination.cpp
     pattern/matcher.cpp
+    pmem.cpp
     runtime/aligned_buffer.cpp
     runtime/backend.cpp
     runtime/backend_manager.cpp
