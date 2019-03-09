@@ -146,7 +146,7 @@ option(NGRAPH_DISTRIBUTED_MLSL_ENABLE "Add distributed MLSL mode for CPU only ba
 option(NGRAPH_DISTRIBUTED_OMPI_ENABLE "Add distributed Open-MPI mode for all backend" FALSE)
 option(NGRAPH_PLAIDML_ENABLE "Enable the PlaidML backend" ${PLAIDML_FOUND})
 # Default to TRUE for now - add compile switches later
-option(NGRAPH_PMDK_ENABLE "Enable PMDK for Persistent Memory Allocation" TRUE)
+option(NGRAPH_PMDK_ENABLE "Enable PMDK for Persistent Memory Allocation" FALSE)
 
 if (NGRAPH_GPUH_ENABLE)
     set(NGRAPH_GPU_ENABLE TRUE)
