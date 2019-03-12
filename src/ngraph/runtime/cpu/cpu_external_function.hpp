@@ -108,6 +108,7 @@ namespace ngraph
                 {
                     return m_memory_buffer_sizes;
                 }
+                size_t get_pmem_buffer_size() const { return m_pmem_buffer_size; }
                 const std::vector<OpAttributes>& get_op_attrs() const { return m_op_attrs; }
                 const std::unique_ptr<MKLDNNEmitter>& get_mkldnn_emitter() const
                 {
@@ -244,6 +245,7 @@ namespace ngraph
                 LayoutDescriptorPtrs parameter_layout_descriptors;
                 LayoutDescriptorPtrs result_layout_descriptors;
                 std::vector<size_t> m_memory_buffer_sizes;
+                size_t m_pmem_buffer_size;
                 std::vector<OpAttributes> m_op_attrs;
 
                 std::unique_ptr<MKLDNNEmitter> m_mkldnn_emitter;

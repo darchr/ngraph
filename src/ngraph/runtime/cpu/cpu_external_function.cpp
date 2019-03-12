@@ -696,6 +696,8 @@ using namespace ngraph::runtime;
         std::map<std::string, size_t> tensor_index_map;
         std::map<std::string, size_t> param_index_map;
         size_t tensor_index = 0;
+// Should put PMDK_ENABLE flags here, but it's making things messy!
+        bool pmem_used = false;
         for (shared_ptr<Node> node : ordered_ops)
         {
             if (!node->is_parameter() && !node->is_constant())
@@ -705,8 +707,17 @@ using namespace ngraph::runtime;
                     const descriptor::Output& output = input.get_output();
                     shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
                     tensor_index_map.insert({tv->get_name(), tensor_index++});
+                    if (tv->is_persistent())
+                    {
+                        std::cout << "Using Persistent Memory" << std::endl;
+                        pmem_used = true;
+                    }
                 }
             }
+        }
+        if (pmem_used)
+        {
+            m_pmem_buffer_size = current_function->get_pmem_pool_size();
         }
 
         writer << "bool " << current_function->get_name() << "_t_en[" << tensor_index << "];\n";
@@ -726,6 +737,11 @@ using namespace ngraph::runtime;
         {
             writer << "size_t pool_base_ptr = (size_t) ctx->memory_buffers["
                    << m_memory_buffer_sizes.size() - 1 << "]->get_ptr();\n";
+            writer << "\n";
+        }
+        if (pmem_used)
+        {
+            writer << "size_t pmem_base_ptr = (size_t) ctx->persistent_buffer->get_ptr():\n";
             writer << "\n";
         }
 
@@ -777,8 +793,14 @@ using namespace ngraph::runtime;
                     for (auto& ele_t : ele.second.second)
                     {
                         stringstream ss;
-                        ss << "((" << ele_t->get_element_type().c_type_string()
-                           << "*)(pool_base_ptr + " << ele_t->get_pool_offset() << "))";
+                        if (ele_t->is_persistent())
+                        {
+                            ss << "((" << ele_t->get_element_type().c_type_string()
+                               << "*)(pmem_base_ptr + " << ele_t->get_pool_offset() << "))";
+                        } else {
+                            ss << "((" << ele_t->get_element_type().c_type_string()
+                               << "*)(pool_base_ptr + " << ele_t->get_pool_offset() << "))";
+                        }
                         m_variable_name_map[ele_t->get_name()] = ss.str();
                         m_tensor_roles[ele_t->get_name()] = CPUTensorRole::INTERMEDIATE;
                     }

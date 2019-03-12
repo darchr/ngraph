@@ -91,7 +91,9 @@ namespace ngraph
         friend std::ostream& operator<<(std::ostream&, const Function&);
         size_t get_instance_id() { return m_instance_id; }
         size_t get_temporary_pool_size();
+        size_t get_pmem_pool_size() { return m_pmem_pool_size; }
         void set_temporary_pool_size(size_t);
+        void set_pmem_pool_size(size_t size) { m_pmem_pool_size = size; }
         // updates graph and m_results list
         void replace_node(std::shared_ptr<Node> old, std::shared_ptr<Node> repl);
 
@@ -109,6 +111,7 @@ namespace ngraph
         ResultVector m_results;
         ParameterVector m_parameters;
         size_t m_temporary_pool_size;
+        size_t m_pmem_pool_size;
 
     private:
         Function(const Function&) = delete;

@@ -64,6 +64,15 @@ namespace ngraph
 
             size_t size() const;
 
+// Add support for marking individual tensors as persistent.
+// NOTE: This is really a gross way to do this - eventually should move to a better 
+// technique ... maybe.
+#ifdef NGRAPH_PMDK_ENABLE
+                bool is_persistent() { return m_is_persistent; }
+                void make_persistent() { m_is_persistent = true; }
+                void make_volatile() { m_is_persistent = false; }
+#endif
+
         protected:
             element::Type m_element_type;
 
@@ -77,6 +86,15 @@ namespace ngraph
             std::string m_name;
             std::shared_ptr<layout::TensorLayout> m_tensor_layout;
             size_t m_pool_offset{0};
+
+#ifdef NGRAPH_PMDK_ENABLE
+            // Default to persistent.
+            // Eventually, though, we might want to pass a persistent flag to the
+            // creation function ...
+            //
+            // One step at a time here.
+            bool m_is_persistent = false;
+#endif
         };
 
         std::ostream& operator<<(std::ostream&, const ngraph::descriptor::Tensor&);

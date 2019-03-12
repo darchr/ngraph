@@ -73,6 +73,11 @@ namespace ngraph
                 MLSL::Environment* mlsl_env;
                 MLSL::Distribution* mlsl_dist;
 #endif
+// Make this a stand-alone object for now instead of merging into memory_buffers to simplify
+// downstream code generation
+#ifdef NGRAPH_PMDK_ENABLE
+                AlignedBuffer* persistent_buffer;
+#endif
             };
             }
 

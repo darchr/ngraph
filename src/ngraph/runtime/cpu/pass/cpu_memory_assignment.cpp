@@ -647,6 +647,13 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
 
     // memory manager for non-cacheable ops, memory allocation will be freed when not longer in use
     ngraph::pass::MemoryManager mm(m_alignment, m_disable_memory_sharing);
+
+    // More persistent memory support - instantiate another memory manager for dealing with
+    // tensors that are marked as persistent
+#ifdef NGRAPH_PMDK_ENABLE
+    ngraph::pass::MemoryManager mm_persistent(m_alignment, m_disable_memory_sharing);
+#endif
+
     // memory manager for cacheable ops, memory allocation will never be freed
     ngraph::pass::MemoryManager mm_caching(m_alignment, true);
 
@@ -816,7 +823,16 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
             }
             else
             {
+#ifndef NGRAPH_PMDK_ENABLE
                 offset = mm.allocate(size);
+#else
+                if (tensor->is_persistent())
+                {
+                    offset = mm_persistent.allocate(size);
+                } else {
+                    offset = mm.allocate(size);
+                }
+#endif
             }
             tensor->set_pool_offset(offset);
             for (auto& e : tensor_set)
@@ -837,7 +853,17 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                 if (m_tensor_caching.empty() ||
                     (!m_tensor_caching.empty() && m_tensor_caching.count(tensor) == 0))
                 {
+#ifndef NGRAPH_PMDK_ENABLE
                     mm.free(tensor->get_pool_offset());
+#else
+                    if (tensor->is_persistent())
+                    {
+                        std::cout << "Assigning Persistent Pool" << std::endl;
+                        mm_persistent.free(tensor->get_pool_offset());
+                    } else {
+                        mm.free(tensor->get_pool_offset());
+                    }
+#endif
                 }
             }
         }
@@ -870,8 +896,17 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                  << mm_caching.max_allocated();
     NGRAPH_DEBUG << "cpu_memory_assignment: max allocated in total is "
                  << mm.max_allocated() + mm_caching.max_allocated();
-
+#ifndef NGRAPH_PMDK_ENABLE
     function->set_temporary_pool_size(mm.max_allocated() + mm_caching.max_allocated());
+#else
+    NGRAPH_DEBUG << "cpu_memory_assignment: max allocated for mm_persistent is "
+                 << mm_persistent.max_allocated();
+    function->set_temporary_pool_size(
+            mm.max_allocated() 
+            + mm_caching.max_allocated()
+        );
+    function->set_pmem_pool_size(mm_persistent.max_allocated());
+#endif
 
     return false;
 }
