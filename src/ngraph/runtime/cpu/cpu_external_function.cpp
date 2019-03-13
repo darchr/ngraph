@@ -225,6 +225,7 @@ runtime::cpu::CPU_ExternalFunction::CPU_ExternalFunction(
 #endif
     , m_compiled_function(nullptr)
     , m_function_name(function->get_name())
+    , m_pmem_buffer_size(0)
     , m_is_built(false)
 {
 }
@@ -710,6 +711,7 @@ using namespace ngraph::runtime;
                     if (tv->is_persistent())
                     {
                         std::cout << "Using Persistent Memory" << std::endl;
+                        std::cout << "Node Name: " << node->get_name() << std::endl;
                         pmem_used = true;
                     }
                 }
@@ -741,7 +743,7 @@ using namespace ngraph::runtime;
         }
         if (pmem_used)
         {
-            writer << "size_t pmem_base_ptr = (size_t) ctx->persistent_buffer->get_ptr():\n";
+            writer << "size_t pmem_base_ptr = (size_t) ctx->persistent_buffer->get_ptr();\n";
             writer << "\n";
         }
 
@@ -860,7 +862,7 @@ using namespace ngraph::runtime;
                 if (current_function->get_name() == m_function_name)
                 {
                     m_op_attrs.emplace_back(
-                        node->description(), node_output_names, node_input_names);
+                        node->get_name(), node_output_names, node_input_names);
                 }
                 if (m_use_tbb)
                 {
@@ -1351,7 +1353,7 @@ void runtime::cpu::CPU_ExternalFunction::build(ngraph::pass::PassConfig& pass_co
             out_names.push_back(tv->get_name());
         }
 
-        m_op_attrs.emplace_back(node->description(), out_names, in_names);
+        m_op_attrs.emplace_back(node->get_name(), out_names, in_names);
         op_names.push_back(node->get_name());
         handler->second(this, node.get(), in, out);
 

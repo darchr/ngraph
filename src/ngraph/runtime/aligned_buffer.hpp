@@ -32,7 +32,7 @@ namespace ngraph
 class ngraph::runtime::AlignedBuffer
 {
 public:
-    AlignedBuffer(size_t byte_size, size_t alignment);
+    AlignedBuffer(size_t byte_size, size_t alignment, bool persistent = false);
     AlignedBuffer();
     ~AlignedBuffer();
 

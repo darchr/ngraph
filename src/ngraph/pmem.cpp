@@ -1,6 +1,7 @@
 #ifdef NGRAPH_PMDK_ENABLE
 // stdlib stuff
 #include <cstdlib>
+#include <iostream>
 #include <string>
 
 // ngraph/pmemobj stuff
@@ -15,7 +16,7 @@ pmem::PMEMManager* pmem::PMEMManager::m_instance = nullptr;
 
 pmem::PMEMManager* ngraph::pmem::PMEMManager::getinstance()
 {
-    if (m_instance == nullptr) return m_instance;
+    if (m_instance != nullptr) return m_instance;
     return m_instance = new pmem::PMEMManager();
 }
 
@@ -29,7 +30,9 @@ void ngraph::pmem::PMEMManager::open_pool(std::string pool_name)
 
 void ngraph::pmem::PMEMManager::create_pool(std::string pool_name, size_t size)
 {
+    std::cout << "pmem: Creating Pool" << std::endl;
     PMEMobjpool* pmem_pool = pmemobj_create(pool_name.c_str(), "", size, 0666);
+    std::cout << "pmem: Pool Pointer: " << pmem_pool << std::endl;
 
     m_pool_name = pool_name;
     m_pmem_pool = pmem_pool;
@@ -59,6 +62,11 @@ void ngraph::pmem::PMEMManager::pmem_free(void* ptr)
 {
     PMEMoid oidp = pmemobj_oid(ptr);
     pmemobj_free(&oidp);
+}
+
+bool ngraph::pmem::PMEMManager::is_persistent_ptr(void* ptr)
+{
+    return pmemobj_pool_by_ptr(ptr) != nullptr;
 }
 
 #endif

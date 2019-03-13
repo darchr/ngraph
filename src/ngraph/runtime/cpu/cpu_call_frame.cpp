@@ -145,6 +145,16 @@ void runtime::cpu::CPU_CallFrame::setup_runtime_context()
         auto buffer = new AlignedBuffer(buffer_size, alignment);
         ctx->memory_buffers.push_back(buffer);
     }
+
+    // Allocate PMEM Pool
+    if (m_external_function->get_pmem_buffer_size() > 0)
+    {
+        ctx->persistent_buffer = new AlignedBuffer(
+                m_external_function->get_pmem_buffer_size(), 
+                alignment,
+                true);
+    }
+
     const auto& mkldnn_emitter = m_external_function->get_mkldnn_emitter();
     ctx->mkldnn_primitives = mkldnn_emitter->get_mkldnn_primitives().data();
     ctx->mkldnn_workspaces = mkldnn_emitter->get_mkldnn_workspaces().data();

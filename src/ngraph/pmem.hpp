@@ -22,6 +22,7 @@ namespace ngraph
             // Alloc-dealloc
             void* pmem_malloc(size_t size);
             void pmem_free(void*);
+            bool is_persistent_ptr(void* ptr);
             
         private:
             std::string m_pool_name;     
