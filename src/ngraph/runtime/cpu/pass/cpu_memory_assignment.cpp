@@ -58,6 +58,8 @@ size_t runtime::cpu::pass::CPUMemoryAssignment::get_bufferID(descriptor::Tensor*
 void runtime::cpu::pass::CPUMemoryAssignment::process_in_place_concat(
     std::list<std::shared_ptr<Node>> nodes)
 {
+    // TODO: Fix
+    return;
     for (shared_ptr<Node> node : nodes)
     {
         if (node->description() == "Concat")
@@ -141,6 +143,8 @@ void runtime::cpu::pass::CPUMemoryAssignment::process_in_place_concat(
 void runtime::cpu::pass::CPUMemoryAssignment::propagate_in_place_concat(
     shared_ptr<ngraph::op::Op> op, size_t output_index)
 {
+    // TODO: fix
+    return;
     if (op->description() == "Concat")
     {
         auto output_tensor = &op->get_output_tensor();
@@ -236,6 +240,8 @@ void runtime::cpu::pass::CPUMemoryAssignment::propagate_in_place_concat(
 void runtime::cpu::pass::CPUMemoryAssignment::process_in_place_slice(
     std::list<std::shared_ptr<Node>> nodes)
 {
+    // TODO: Fix
+    return; 
     for (shared_ptr<Node>& node : nodes)
     {
         if (node->description() == "Slice")
@@ -300,6 +306,8 @@ void runtime::cpu::pass::CPUMemoryAssignment::process_in_place_slice(
 void runtime::cpu::pass::CPUMemoryAssignment::propagate_in_place_slice(
     ngraph::descriptor::Input* input, size_t input_index)
 {
+    // TODO: Fix
+    return; 
     std::deque<std::pair<ngraph::descriptor::Input*, size_t>> stack;
     stack.push_front(std::pair<ngraph::descriptor::Input*, size_t>(input, input_index));
 
@@ -700,6 +708,16 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
             {
                 for (auto oi_pair : op_annotations->get_in_place_oi_pairs())
                 {
+                    // TODO: For now, the destructive io optimization is killing the use
+                    // of persistent memory when the input to a node is in DRAM but
+                    // the output is in PMEM.
+                    //
+                    // For now, just disable this operation.
+                    //
+                    // Once I get around to implementing the PMEM buffers correctly,
+                    // we'll be able to check that here more easily.
+                    continue;
+
                     auto output_tensor = &node->get_outputs().at(oi_pair.output).get_tensor();
                     auto input_tensor = &node->get_inputs().at(oi_pair.input).get_tensor();
                     auto input_node = node->get_inputs().at(oi_pair.input).get_output().get_node();

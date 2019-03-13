@@ -225,7 +225,8 @@ namespace ngraph
         INPUT,
         CONSTANT,
         OUTPUT,
-        INTERMEDIATE
+        INTERMEDIATE,
+        PMEM_INTERMEDIATE
     };
 } // end namespace ngraph
 
