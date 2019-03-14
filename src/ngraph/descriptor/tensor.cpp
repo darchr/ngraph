@@ -69,6 +69,16 @@ size_t descriptor::Tensor::get_pool_offset() const
     return m_pool_offset;
 }
 
+void descriptor::Tensor::set_pool_number(size_t number)
+{
+    m_pool_number = number;
+}
+
+size_t descriptor::Tensor::get_pool_number() const
+{
+    return m_pool_number;
+}
+
 size_t descriptor::Tensor::size() const
 {
     if (auto tvl = get_tensor_layout())

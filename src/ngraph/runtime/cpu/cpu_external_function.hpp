@@ -264,7 +264,7 @@ namespace ngraph
                 // Each tensor is put into one buffer set.
                 // All the tensors in the same buffer set share the same memory buffer.
                 // bufferID_to_tensorSets maps bufferID to the pair of CPUTensorRole and buffer set.
-                // CPUTensorRole is INPUT, CONSTANT, OUTPUT, or INTERMEDIATE,
+                // CPUTensorRole is INPUT, CONSTANT, OUTPUT, INTERMEDIATE, or PERSISTENT_INTERMEDIATE,
                 // which tells from where the memory buffer comes.
                 std::unordered_map<
                     size_t,

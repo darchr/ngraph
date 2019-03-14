@@ -226,7 +226,6 @@ namespace ngraph
         CONSTANT,
         OUTPUT,
         INTERMEDIATE,
-        PERSISTENT_INTERMEDIATE
     };
 } // end namespace ngraph
 

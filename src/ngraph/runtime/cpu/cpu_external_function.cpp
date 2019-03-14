@@ -175,6 +175,7 @@
 #include "ngraph/runtime/cpu/pass/cpu_rnn_fusion.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_workspace_insertion.hpp"
 #include "ngraph/runtime/cpu/pass/halide_subgraph_extraction.hpp"
+#include "ngraph/runtime/cpu/cpu_memory_utils.hpp"
 
 #ifdef NGRAPH_DISTRIBUTED_ENABLE
 #include "ngraph/op/allreduce.hpp"
@@ -697,7 +698,7 @@ using namespace ngraph::runtime;
         std::map<std::string, size_t> tensor_index_map;
         std::map<std::string, size_t> param_index_map;
         size_t tensor_index = 0;
-// Should put PMDK_ENABLE flags here, but it's making things messy!
+
         bool pmem_used = false;
         for (shared_ptr<Node> node : ordered_ops)
         {
@@ -708,10 +709,10 @@ using namespace ngraph::runtime;
                     const descriptor::Output& output = input.get_output();
                     shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
                     tensor_index_map.insert({tv->get_name(), tensor_index++});
-                    if (tv->is_persistent())
+                    if (tv->get_pool_number() == static_cast<size_t>(runtime::cpu::MemoryLocation::PMEM))
                     {
-                        std::cout << "Using Persistent Memory" << std::endl;
-                        std::cout << "Node Name: " << node->get_name() << std::endl;
+                        //std::cout << "Using Persistent Memory" << std::endl;
+                        //std::cout << "Node Name: " << node->get_name() << std::endl;
                         pmem_used = true;
                     }
                 }
@@ -795,30 +796,17 @@ using namespace ngraph::runtime;
                     for (auto& ele_t : ele.second.second)
                     {
                         stringstream ss;
-                        ss << "((" << ele_t->get_element_type().c_type_string()
-                           << "*)(pool_base_ptr + " << ele_t->get_pool_offset() << "))";
+                        if (ele_t->get_pool_number() == static_cast<size_t>(runtime::cpu::MemoryLocation::PMEM))
+                        {
+                            ss << "((" << ele_t->get_element_type().c_type_string()
+                                   << "*)(pmem_base_ptr + " << ele_t->get_pool_offset() << "))";
+                        } else {
+                            ss << "((" << ele_t->get_element_type().c_type_string()
+                               << "*)(pool_base_ptr + " << ele_t->get_pool_offset() << "))";
+                        }
 
                         m_variable_name_map[ele_t->get_name()] = ss.str();
                         m_tensor_roles[ele_t->get_name()] = CPUTensorRole::INTERMEDIATE;
-                    }
-                }
-            }
-        }
-
-        if (pmem_used)
-        {
-            for (auto& ele : bufferID_to_tensorSets)
-            {
-                if (ele.second.first == CPUTensorRole::PERSISTENT_INTERMEDIATE)
-                {
-                    for (auto& ele_t : ele.second.second)
-                    {
-                        stringstream ss;
-                        ss << "((" << ele_t->get_element_type().c_type_string()
-                               << "*)(pmem_base_ptr + " << ele_t->get_pool_offset() << "))";
-
-                        m_variable_name_map[ele_t->get_name()] = ss.str();
-                        m_tensor_roles[ele_t->get_name()] = CPUTensorRole::PERSISTENT_INTERMEDIATE;
                     }
                 }
             }
@@ -1455,7 +1443,6 @@ void runtime::cpu::CPU_ExternalFunction::build(ngraph::pass::PassConfig& pass_co
             {
             case CPUTensorRole::INPUT: return string("CPUTensorRole::INPUT");
             case CPUTensorRole::INTERMEDIATE: return string("CPUTensorRole::INTERMEDIATE");
-            case CPUTensorRole::PERSISTENT_INTERMEDIATE: return string("CPUTensorRole::PERSISTENT_INTERMEDIATE");
             case CPUTensorRole::CONSTANT: return string("CPUTensorRole::CONSTANT");
             case CPUTensorRole::OUTPUT: return string("CPUTensorRole::OUTPUT");
             }

@@ -27,6 +27,7 @@
 #include "ngraph/runtime/cpu/cpu_op_annotations.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_memory_assignment.hpp"
 #include "ngraph/util.hpp"
+#include "ngraph/runtime/cpu/cpu_memory_utils.hpp"
 
 using namespace std;
 using namespace ngraph;
@@ -354,7 +355,7 @@ void runtime::cpu::pass::CPUMemoryAssignment::propagate_in_place_slice(
 // If the operation is destructive in-place or not in-place, a new buffer set is created for the output tensor.
 // Each buffer set has a bufferID which starts at 0 and increments by 1 each time a new set is created.
 // bufferID_to_tensorSets maps bufferID to the pair of CPUTensorRole and buffer set.
-// CPUTensorRole is INPUT, CONSTANT, OUTPUT, INTERMEDIATE, or PERSISTENT_INTERMEDIATE,
+// CPUTensorRole is INPUT, CONSTANT, OUTPUT, or INTERMEDIATE,
 // which tells from where the memory buffer comes.
 // tensor_to_bufferID maps tensor to the ID of the buffer set it belongs to.
 void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared_ptr<Node>>& ops)
@@ -392,7 +393,7 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
             auto input_buffer_it = m_bufferID_to_tensorSets.find(bufferID);
             NGRAPH_ASSERT(input_buffer_it != m_bufferID_to_tensorSets.end());
             auto pair = input_buffer_it->second;
-            if ( (pair.first != CPUTensorRole::INTERMEDIATE && pair.first != CPUTensorRole::PERSISTENT_INTERMEDIATE) ||
+            if ( pair.first != CPUTensorRole::INTERMEDIATE ||
                 in_place_slice_chain.find(input_tensor) != in_place_slice_chain.end())
             {
                 // tensor of function output should not be in the same set as function input, constant, output, or in place slice,
@@ -426,19 +427,9 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
                     if (node->description() == "Concat")
                     {
                         auto output_tensor = &node->get_output_tensor();
-
-                        // Initilize `ele` and determine if it is persistent or not.
-                        std::pair<CPUTensorRole, unordered_set<descriptor::Tensor*>> ele;
-                        if (output_tensor->is_persistent())
-                        {
-                            ele = std::pair<CPUTensorRole, unordered_set<descriptor::Tensor*>>(
-                                CPUTensorRole::PERSISTENT_INTERMEDIATE,
-                                unordered_set<descriptor::Tensor*>({output_tensor}));
-                        } else {
-                            ele = std::pair<CPUTensorRole, unordered_set<descriptor::Tensor*>>(
+                        auto ele = std::pair<CPUTensorRole, unordered_set<descriptor::Tensor*>>(
                                 CPUTensorRole::INTERMEDIATE,
                                 unordered_set<descriptor::Tensor*>({output_tensor}));
-                        }
 
                         for (auto& arg : node->get_arguments())
                         {
@@ -530,7 +521,7 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
 
                                 // Check to see if input and output tensors live in the same
                                 // memory region
-                                if (input_tensor->is_persistent() != output_tensor->is_persistent())
+                                if (input_tensor->get_pool_number() != output_tensor->get_pool_number())
                                 {
                                     NGRAPH_DEBUG << "cpu_memory_assignment: no in place "
                                                     "due to pmem/dram invalidation";
@@ -572,17 +563,9 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
                 // not in place, create a new set and insert into the map
                 if (m_tensor_to_bufferID.find(output_tensor) == m_tensor_to_bufferID.end())
                 {
-                    std::pair<CPUTensorRole, unordered_set<descriptor::Tensor*>> ele;
-                    if (output_tensor->is_persistent())
-                    {
-                        ele = std::pair<CPUTensorRole, unordered_set<descriptor::Tensor*>>(
-                            CPUTensorRole::PERSISTENT_INTERMEDIATE,
-                            unordered_set<descriptor::Tensor*>({output_tensor}));
-                    } else {
-                        ele = std::pair<CPUTensorRole, unordered_set<descriptor::Tensor*>>(
+                    auto ele = std::pair<CPUTensorRole, unordered_set<descriptor::Tensor*>>(
                             CPUTensorRole::INTERMEDIATE,
                             unordered_set<descriptor::Tensor*>({output_tensor}));
-                    }
                     m_bufferID_to_tensorSets[count] = ele;
                     m_tensor_to_bufferID[output_tensor] = count;
                     count++;
@@ -600,7 +583,6 @@ void runtime::cpu::pass::CPUMemoryAssignment::liveness_analysis(
         {
         case CPUTensorRole::INPUT: return string("CPUTensorRole::INPUT");
         case CPUTensorRole::INTERMEDIATE: return string("CPUTensorRole::INTERMEDIATE");
-        case CPUTensorRole::PERSISTENT_INTERMEDIATE: return string("CPUTensorRole::PERSISTENT_INTERMEDIATE");
         case CPUTensorRole::CONSTANT: return string("CPUTensorRole::CONSTANT");
         case CPUTensorRole::OUTPUT: return string("CPUTensorRole::OUTPUT");
         }
@@ -620,7 +602,7 @@ void runtime::cpu::pass::CPUMemoryAssignment::liveness_analysis(
             NGRAPH_DEBUG << ele_t->get_name() << " ";
         }
         NGRAPH_DEBUG << "}";
-        if (ele.second.first != CPUTensorRole::INTERMEDIATE && ele.second.first != CPUTensorRole::PERSISTENT_INTERMEDIATE)
+        if (ele.second.first != CPUTensorRole::INTERMEDIATE)
         {
             // do not allocate and free memory for function inputs, outputs, constants and tensors
             // sharing memory with them.
@@ -863,16 +845,12 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
             }
             else
             {
-#ifndef NGRAPH_PMDK_ENABLE
-                offset = mm.allocate(size);
-#else
-                if (tensor->is_persistent())
+                if (tensor->get_pool_number() == static_cast<size_t>(runtime::cpu::MemoryLocation::PMEM))
                 {
                     offset = mm_persistent.allocate(size);
                 } else {
                     offset = mm.allocate(size);
                 }
-#endif
             }
             tensor->set_pool_offset(offset);
             for (auto& e : tensor_set)
@@ -893,17 +871,12 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                 if (m_tensor_caching.empty() ||
                     (!m_tensor_caching.empty() && m_tensor_caching.count(tensor) == 0))
                 {
-#ifndef NGRAPH_PMDK_ENABLE
-                    mm.free(tensor->get_pool_offset());
-#else
-                    if (tensor->is_persistent())
+                    if (tensor->get_pool_number() == static_cast<size_t>(runtime::cpu::MemoryLocation::PMEM))
                     {
-                        std::cout << "Assigning Persistent Pool" << std::endl;
                         mm_persistent.free(tensor->get_pool_offset());
                     } else {
                         mm.free(tensor->get_pool_offset());
                     }
-#endif
                 }
             }
         }
