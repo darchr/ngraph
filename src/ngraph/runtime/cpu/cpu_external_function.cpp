@@ -795,16 +795,30 @@ using namespace ngraph::runtime;
                     for (auto& ele_t : ele.second.second)
                     {
                         stringstream ss;
-                        if (ele_t->is_persistent())
-                        {
-                            ss << "((" << ele_t->get_element_type().c_type_string()
-                               << "*)(pmem_base_ptr + " << ele_t->get_pool_offset() << "))";
-                        } else {
-                            ss << "((" << ele_t->get_element_type().c_type_string()
-                               << "*)(pool_base_ptr + " << ele_t->get_pool_offset() << "))";
-                        }
+                        ss << "((" << ele_t->get_element_type().c_type_string()
+                           << "*)(pool_base_ptr + " << ele_t->get_pool_offset() << "))";
+
                         m_variable_name_map[ele_t->get_name()] = ss.str();
                         m_tensor_roles[ele_t->get_name()] = CPUTensorRole::INTERMEDIATE;
+                    }
+                }
+            }
+        }
+
+        if (pmem_used)
+        {
+            for (auto& ele : bufferID_to_tensorSets)
+            {
+                if (ele.second.first == CPUTensorRole::PERSISTENT_INTERMEDIATE)
+                {
+                    for (auto& ele_t : ele.second.second)
+                    {
+                        stringstream ss;
+                        ss << "((" << ele_t->get_element_type().c_type_string()
+                               << "*)(pmem_base_ptr + " << ele_t->get_pool_offset() << "))";
+
+                        m_variable_name_map[ele_t->get_name()] = ss.str();
+                        m_tensor_roles[ele_t->get_name()] = CPUTensorRole::PERSISTENT_INTERMEDIATE;
                     }
                 }
             }
@@ -1166,7 +1180,7 @@ void runtime::cpu::CPU_ExternalFunction::register_common_passes(
             CommonSubexpressionElimination, true, ngraph::pass, runtime::cpu::get_cse_handlers_map());
         REGISTER_KNOBBED_PASS(CPUPostLayoutOptimizations, true, runtime::cpu::pass);
         REGISTER_KNOBBED_PASS(CPUMemoryOptimization, true, runtime::cpu::pass);
-        REGISTER_KNOBBED_PASS(GetOutputElementElimination, false, ngraph::pass);
+        REGISTER_KNOBBED_PASS(GetOutputElementElimination, true, ngraph::pass);
         REGISTER_KNOBBED_PASS_WITH_ARGS(
             PropagateCacheability, true, ngraph::pass, runtime::cpu::get_annotations_factory());
     }
@@ -1441,6 +1455,7 @@ void runtime::cpu::CPU_ExternalFunction::build(ngraph::pass::PassConfig& pass_co
             {
             case CPUTensorRole::INPUT: return string("CPUTensorRole::INPUT");
             case CPUTensorRole::INTERMEDIATE: return string("CPUTensorRole::INTERMEDIATE");
+            case CPUTensorRole::PERSISTENT_INTERMEDIATE: return string("CPUTensorRole::PERSISTENT_INTERMEDIATE");
             case CPUTensorRole::CONSTANT: return string("CPUTensorRole::CONSTANT");
             case CPUTensorRole::OUTPUT: return string("CPUTensorRole::OUTPUT");
             }
