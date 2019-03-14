@@ -75,7 +75,7 @@ namespace ngraph
 #endif
 // Make this a stand-alone object for now instead of merging into memory_buffers to simplify
 // downstream code generation
-                AlignedBuffer* persistent_buffer;
+                AlignedBuffer* persistent_buffer = nullptr;
             };
             }
 

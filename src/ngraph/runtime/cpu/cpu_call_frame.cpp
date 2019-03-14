@@ -54,6 +54,7 @@ runtime::cpu::CPU_CallFrame::~CPU_CallFrame()
         NGRAPH_ASSERT(m_compiled_destroy_ctx_func) << "compiled_destroy_ctx_func cannot be null.";
         m_compiled_destroy_ctx_func(cg_ctx);
     }
+    cleanup_runtime_context();
 }
 
 void runtime::cpu::CPU_CallFrame::inner_call(
@@ -187,6 +188,8 @@ void runtime::cpu::CPU_CallFrame::cleanup_runtime_context()
     {
         delete buffer;
     }
+    delete ctx->persistent_buffer;
+
     if (m_external_function->is_direct_execution() && std::getenv("NGRAPH_CPU_USE_TBB") != nullptr)
     {
         // For codegen mode, graph and global control are now part of a code generated
