@@ -9,6 +9,11 @@ set(PMDK_GIT_REPO_URL https://github.com/pmem/pmdk)
 set(PMDK_GIT_LABEL 1.5)
 
 set(PMDK_INSTALL_DIR ${EXTERNAL_PROJECTS_ROOT}/pmdk)
+set(PMDK_LIB_DIR ${PMDK_INSTALL_DIR}/lib)
+set(PMDK_INCLUDE_DIR ${PMDK_INSTALL_DIR}/include)
+
+set(PMEM_LIB ${CMAKE_SHARED_LIBRARY_PREFIX}pmem${CMAKE_SHARED_LIBRARY_SUFFIX})
+set(PMEMOBJ_LIB ${CMAKE_SHARED_LIBRARY_PREFIX}pmemobj${CMAKE_SHARED_LIBRARY_SUFFIX})
 
 find_program(MAKE_EXE NAMES gmake nmake make)
 
@@ -33,11 +38,45 @@ ExternalProject_Add(
 
 #------------------------------------------------------------------------------
 
-ExternalProject_Get_Property(ext_pmdk SOURCE_DIR)
-ExternalProject_Get_Property(ext_pmdk INSTALL_DIR)
+# ExternalProject_Get_Property(ext_pmdk SOURCE_DIR)
+# ExternalProject_Get_Property(ext_pmdk INSTALL_DIR)
+add_library(libpmem SHARED IMPORTED)
+add_dependencies(libpmem ext_pmdk)
 
-add_library(libpmemobj INTERFACE)
-target_include_directories(libpmemobj SYSTEM INTERFACE ${SOURCE_DIR}/include)
-target_link_libraries(libpmemobj INTERFACE ${INSTALL_DIR}/lib/libpmemobj.so)
-link_directories(${INSTALL_DIR}/lib)
-add_dependencies(libpmemobj ext_pmdk)
+set_target_properties(libpmem
+    PROPERTIES
+        IMPORTED_LOCATION ${PMDK_LIB_DIR}/${PMEM_LIB}
+        INTERFACE_INCLUDE_DIRECTORIES ${PMDK_INCLUDE_DIR}
+        INSTALL_RPATH ${CMAKE_INSTALL_RPATH}
+    )
+
+add_library(libpmemobj SHARED IMPORTED)
+add_dependencies(libpmemobj PRIVATE libpmem ext_pmdk)
+set_target_properties(libpmemobj
+    PROPERTIES
+        IMPORTED_LOCATION ${PMDK_LIB_DIR}/${PMEMOBJ_LIB}
+        INTERFACE_INCLUDE_DIRECTORIES ${PMDK_INCLUDE_DIR}
+    )
+
+install(
+    FILES
+        # This is really hacky - find a better way to do this!
+        ${PMDK_LIB_DIR}/${PMEMOBJ_LIB}
+        ${PMDK_LIB_DIR}/${PMEMOBJ_LIB}.1
+        ${PMDK_LIB_DIR}/${PMEMOBJ_LIB}.1.0.0
+        ${PMDK_LIB_DIR}/${PMEM_LIB}
+        ${PMDK_LIB_DIR}/${PMEM_LIB}.1
+        ${PMDK_LIB_DIR}/${PMEM_LIB}.1.0.0
+    DESTINATION
+        ${NGRAPH_INSTALL_LIB}
+)
+
+install(
+    DIRECTORY
+        ${PMDK_INCLUDE_DIR}/
+    DESTINATION "${NGRAPH_INSTALL_INCLUDE}/pmdk"
+    FILES_MATCHING
+        PATTERN "*.hpp"
+        PATTERN "*.h"
+)
+

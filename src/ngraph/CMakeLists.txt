@@ -153,7 +153,6 @@ set (SRC
     pass/serialize.cpp
     pass/zero_dim_tensor_elimination.cpp
     pattern/matcher.cpp
-    pmem.cpp
     runtime/aligned_buffer.cpp
     runtime/backend.cpp
     runtime/backend_manager.cpp
@@ -171,6 +170,7 @@ set (SRC
     graph_util.cpp
     placement.cpp
     cpio.cpp
+    pmem.cpp
     )
 
 set(SRC ${SRC}
@@ -266,15 +266,20 @@ if (NOT WIN32)
     target_link_libraries(ngraph PUBLIC dl pthread)
 endif()
 
-if (NGRAPH_PMDK_ENABLE)
-   target_link_libraries(ngraph PRIVATE libpmemobj)
-endif()
-
 if (NGRAPH_ONNX_IMPORT_ENABLE)
     target_sources(ngraph PRIVATE $<TARGET_OBJECTS:onnx_import_interface>)
     target_link_libraries(ngraph PRIVATE onnx_import)
 endif()
 
+if (NGRAPH_PMDK_ENABLE)
+   ExternalProject_Get_Property(ext_pmdk INSTALL_DIR)
+   target_include_directories(ngraph SYSTEM PRIVATE ${INSTALL_DIR}/include)
+   target_link_libraries(ngraph 
+        PRIVATE 
+            libpmemobj         
+        )
+   add_dependencies(ngraph libpmemobj)
+endif()
 
 #-----------------------------------------------------------------------------------------------
 # Installation logic...
