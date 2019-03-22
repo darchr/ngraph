@@ -20,6 +20,7 @@
 #include "cpu_tensor_view.hpp"
 #include "ngraph/descriptor/layout/tensor_layout.hpp"
 #include "ngraph/except.hpp"
+#include "ngraph/pmem.hpp"
 #include "ngraph/runtime/cpu/cpu_executor.hpp"
 #include "ngraph/runtime/cpu/cpu_layout_descriptor.hpp"
 #include "ngraph/runtime/cpu/mkldnn_utils.hpp"
@@ -36,7 +37,8 @@ using namespace std;
 runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_type,
                                            const Shape& shape,
                                            void* memory_pointer,
-                                           const runtime::Backend* parent)
+                                           const runtime::Backend* parent,
+                                           bool persistent)
     : runtime::Tensor(std::make_shared<ngraph::descriptor::Tensor>(element_type, shape, "external"),
                       parent)
     , buffer(nullptr)
@@ -57,7 +59,8 @@ runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_
     else if (buffer_size > 0)
     {
         size_t allocation_size = buffer_size + BufferAlignment;
-        auto ptr = ngraph_malloc(allocation_size);
+        auto ptr = ngraph_malloc(allocation_size, persistent);
+
         buffer = static_cast<char*>(ptr);
 
 // GCC major versions below 5 do not implement C++11 std::align
@@ -75,8 +78,9 @@ runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_
 
 runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_type,
                                            const Shape& shape,
-                                           const runtime::Backend* parent)
-    : CPUTensorView(element_type, shape, nullptr, parent)
+                                           const runtime::Backend* parent,
+                                           bool persistent)
+    : CPUTensorView(element_type, shape, nullptr, parent, persistent)
 {
 }
 

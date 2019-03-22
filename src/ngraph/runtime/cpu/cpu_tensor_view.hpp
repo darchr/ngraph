@@ -35,11 +35,13 @@ namespace ngraph
             public:
                 CPUTensorView(const ngraph::element::Type& element_type,
                               const Shape& shape,
-                              const runtime::Backend* parent);
+                              const runtime::Backend* parent,
+                              bool persistent = false);
                 CPUTensorView(const ngraph::element::Type& element_type,
                               const Shape& shape,
                               void* memory_pointer,
-                              const runtime::Backend* parent);
+                              const runtime::Backend* parent,
+                              bool persistent = false);
                 virtual ~CPUTensorView() override;
 
                 char* get_data_ptr();

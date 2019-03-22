@@ -43,7 +43,7 @@ void ngraph::pmem::PMEMManager::close_pool()
     pmemobj_close(m_pmem_pool);
 }
 
-void* ngraph::pmem::PMEMManager::pmem_malloc(size_t size)
+void* ngraph::pmem::pmem_malloc(size_t size)
 {
     PMEMManager* manager = pmem::PMEMManager::getinstance();
 
@@ -58,13 +58,13 @@ void* ngraph::pmem::PMEMManager::pmem_malloc(size_t size)
     return ptr;
 }
 
-void ngraph::pmem::PMEMManager::pmem_free(void* ptr)
+void ngraph::pmem::pmem_free(void* ptr)
 {
     PMEMoid oidp = pmemobj_oid(ptr);
     pmemobj_free(&oidp);
 }
 
-bool ngraph::pmem::PMEMManager::is_persistent_ptr(void* ptr)
+bool ngraph::pmem::is_persistent_ptr(void* ptr)
 {
     return pmemobj_pool_by_ptr(ptr) != nullptr;
 }

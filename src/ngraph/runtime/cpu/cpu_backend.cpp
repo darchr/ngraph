@@ -69,6 +69,12 @@ shared_ptr<runtime::Tensor> runtime::cpu::CPU_Backend::create_tensor(
     return make_shared<runtime::cpu::CPUTensorView>(element_type, shape, memory_pointer, this);
 }
 
+shared_ptr<runtime::Tensor> runtime::cpu::CPU_Backend::create_persistent_tensor(
+    const element::Type& element_type, const Shape& shape)
+{
+    return make_shared<runtime::cpu::CPUTensorView>(element_type, shape, this, true);
+}
+
 shared_ptr<runtime::Executable>
     runtime::cpu::CPU_Backend::compile(shared_ptr<Function> func, bool performance_counters_enabled)
 {

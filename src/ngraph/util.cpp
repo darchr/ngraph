@@ -27,6 +27,7 @@
 #include "ngraph/graph_util.hpp"
 #include "ngraph/log.hpp"
 #include "ngraph/node.hpp"
+#include "ngraph/pmem.hpp"
 #include "ngraph/result_vector.hpp"
 #include "ngraph/runtime/backend.hpp"
 #include "ngraph/shape.hpp"
@@ -180,13 +181,19 @@ void ngraph::aligned_free(void* p)
 #endif
 }
 
-void* ngraph::ngraph_malloc(size_t size)
+void* ngraph::ngraph_malloc(size_t size, bool persistent)
 {
-    auto ptr = malloc(size);
-    if (size != 0 && !ptr)
+    void* ptr;
+    if (persistent)
     {
-        NGRAPH_ERR << "malloc failed to allocate memory of size " << size;
-        throw std::bad_alloc();
+        ptr = pmem::pmem_malloc(size);
+    } else {
+        ptr = malloc(size);
+        if (size != 0 && !ptr)
+        {
+            NGRAPH_ERR << "malloc failed to allocate memory of size " << size;
+            throw std::bad_alloc();
+        }
     }
     return ptr;
 }
@@ -195,7 +202,12 @@ void ngraph::ngraph_free(void* ptr)
 {
     if (ptr)
     {
-        free(ptr);
+        if (pmem::is_persistent_ptr(ptr))
+        {
+            pmem::pmem_free(ptr);
+        } else {
+            free(ptr);
+        }
     }
 }
 

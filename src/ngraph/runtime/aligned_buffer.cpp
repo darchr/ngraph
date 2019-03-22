@@ -35,15 +35,7 @@ runtime::AlignedBuffer::AlignedBuffer(size_t byte_size, size_t alignment, bool p
     if (m_byte_size > 0)
     {
         size_t allocation_size = m_byte_size + alignment;
-        if (persistent == false)
-        {
-            m_allocated_buffer = static_cast<char*>(ngraph_malloc(allocation_size));
-        } else {
-            // Allocate from PMEM
-            pmem::PMEMManager* manager = pmem::PMEMManager::getinstance();
-            void* ptr = manager->pmem_malloc(byte_size);
-            m_allocated_buffer = static_cast<char*>(ptr);
-        }
+        m_allocated_buffer = static_cast<char*>(ngraph_malloc(allocation_size, persistent));
         m_aligned_buffer = m_allocated_buffer;
         size_t mod = size_t(m_aligned_buffer) % alignment;
 
@@ -63,12 +55,6 @@ runtime::AlignedBuffer::~AlignedBuffer()
 {
     if (m_allocated_buffer != nullptr)
     {
-        pmem::PMEMManager* manager = pmem::PMEMManager::getinstance();
-        if (manager->is_persistent_ptr(static_cast<void*>(m_allocated_buffer)))
-        {
-            manager->pmem_free(static_cast<void*>(m_allocated_buffer));
-        } else {
-            ngraph_free(m_allocated_buffer);
-        }
+        ngraph_free(m_allocated_buffer);
     }
 }

@@ -394,7 +394,8 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
             NGRAPH_ASSERT(input_buffer_it != m_bufferID_to_tensorSets.end());
             auto pair = input_buffer_it->second;
             if ( pair.first != CPUTensorRole::INTERMEDIATE ||
-                in_place_slice_chain.find(input_tensor) != in_place_slice_chain.end())
+                in_place_slice_chain.find(input_tensor) != in_place_slice_chain.end() ||
+                input_tensor->get_pool_number() != output_tensor->get_pool_number())
             {
                 // tensor of function output should not be in the same set as function input, constant, output, or in place slice,
                 // because they cannot share the same memory buffer
@@ -662,9 +663,7 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
 
     // More persistent memory support - instantiate another memory manager for dealing with
     // tensors that are marked as persistent
-#ifdef NGRAPH_PMDK_ENABLE
     ngraph::pass::MemoryManager mm_persistent(m_alignment, m_disable_memory_sharing);
-#endif
 
     // memory manager for cacheable ops, memory allocation will never be freed
     ngraph::pass::MemoryManager mm_caching(m_alignment, true);
@@ -845,6 +844,7 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
             }
             else
             {
+                // todo: This enum conversion thing is gross
                 if (tensor->get_pool_number() == static_cast<size_t>(runtime::cpu::MemoryLocation::PMEM))
                 {
                     offset = mm_persistent.allocate(size);

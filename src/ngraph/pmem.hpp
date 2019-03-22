@@ -19,10 +19,6 @@ namespace ngraph
             void create_pool(std::string pool_name, size_t size);
             void close_pool();
 
-            // Alloc-dealloc
-            void* pmem_malloc(size_t size);
-            void pmem_free(void*);
-            bool is_persistent_ptr(void* ptr);
             
         private:
             std::string m_pool_name;     
@@ -33,6 +29,11 @@ namespace ngraph
             // context of the CPU, but for now its simpler to do this.
             static PMEMManager* m_instance;
         };
+
+        // Alloc-dealloc
+        void* pmem_malloc(size_t size);
+        void pmem_free(void*);
+        bool is_persistent_ptr(void* ptr);
     }
 }
 #endif
