@@ -1,0 +1,13 @@
+diff --git a/src/include/libpmemobj/base.h b/src/include/libpmemobj/base.h
+index 831247b..c508e14 100644
+--- a/src/include/libpmemobj/base.h
++++ b/src/include/libpmemobj/base.h
+@@ -66,7 +66,7 @@ extern "C" {
+  */
+ typedef struct pmemobjpool PMEMobjpool;
+ 
+-#define PMEMOBJ_MAX_ALLOC_SIZE ((size_t)0x3FFDFFFC0)
++#define PMEMOBJ_MAX_ALLOC_SIZE ((size_t)0x2540be400)
+ 
+ /*
+  * allocation functions flags

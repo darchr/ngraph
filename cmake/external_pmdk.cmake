@@ -26,8 +26,12 @@ ExternalProject_Add(
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ${MAKE_EXE} CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} -j all
+    # See the comments in `external_mkldnn.cmake` for what the heck this is doing
+    PATCH_COMMAND patch -p1 --forward --reject-file=- -i ${CMAKE_SOURCE_DIR}/cmake/pmdk.patch || exit 0
     INSTALL_COMMAND ${MAKE_EXE} install prefix=${PMDK_INSTALL_DIR}
+
     BUILD_IN_SOURCE TRUE
+
     # Setup directories
     TMP_DIR "${EXTERNAL_PROJECTS_ROOT}/pmdk/tmp"
     STAMP_DIR "${EXTERNAL_PROJECTS_ROOT}/pmdk/stamp"
