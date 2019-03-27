@@ -17,6 +17,9 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
+
+#include "ngraph/util.hpp"
 
 namespace ngraph
 {
@@ -32,7 +35,13 @@ namespace ngraph
 class ngraph::runtime::AlignedBuffer
 {
 public:
-    AlignedBuffer(size_t byte_size, size_t alignment, bool persistent = false);
+    AlignedBuffer(
+        size_t byte_size, 
+        size_t alignment, 
+        std::function<void*(size_t)> allocator = ngraph_malloc,
+        std::function<void(void*)> free = ngraph_free
+    );
+
     AlignedBuffer();
     ~AlignedBuffer();
 
@@ -47,4 +56,7 @@ private:
     char* m_allocated_buffer;
     char* m_aligned_buffer;
     size_t m_byte_size;
+
+    // Function to call to clean up m_allocated_buffer
+    std::function<void(void*)> m_free_function;
 };

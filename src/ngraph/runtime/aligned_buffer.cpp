@@ -15,6 +15,7 @@
 //*****************************************************************************
 
 #include <memory>
+#include <functional>
 
 #include "ngraph/runtime/aligned_buffer.hpp"
 #include "ngraph/util.hpp"
@@ -26,16 +27,22 @@ runtime::AlignedBuffer::AlignedBuffer()
     : m_allocated_buffer(nullptr)
     , m_aligned_buffer(nullptr)
     , m_byte_size(0)
+    , m_free_function(ngraph_free)
 {
 }
 
-runtime::AlignedBuffer::AlignedBuffer(size_t byte_size, size_t alignment, bool persistent)
+runtime::AlignedBuffer::AlignedBuffer(
+        size_t byte_size,
+        size_t alignment,
+        std::function<void*(size_t)> fn_allocator,
+        std::function<void(void*)> fn_free
+    )
 {
     m_byte_size = byte_size;
     if (m_byte_size > 0)
     {
         size_t allocation_size = m_byte_size + alignment;
-        m_allocated_buffer = static_cast<char*>(ngraph_malloc(allocation_size, persistent));
+        m_allocated_buffer = static_cast<char*>(fn_allocator(allocation_size));
         m_aligned_buffer = m_allocated_buffer;
         size_t mod = size_t(m_aligned_buffer) % alignment;
 
@@ -49,12 +56,14 @@ runtime::AlignedBuffer::AlignedBuffer(size_t byte_size, size_t alignment, bool p
         m_allocated_buffer = nullptr;
         m_aligned_buffer = nullptr;
     }
+    // Set the free function to be just ngraph_free
+    m_free_function = fn_free;
 }
 
 runtime::AlignedBuffer::~AlignedBuffer()
 {
     if (m_allocated_buffer != nullptr)
     {
-        ngraph_free(m_allocated_buffer);
+        m_free_function(static_cast<void*>(m_allocated_buffer));
     }
 }

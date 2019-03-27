@@ -181,19 +181,13 @@ void ngraph::aligned_free(void* p)
 #endif
 }
 
-void* ngraph::ngraph_malloc(size_t size, bool persistent)
+void* ngraph::ngraph_malloc(size_t size)
 {
-    void* ptr;
-    if (persistent)
+    auto ptr = malloc(size);
+    if (size != 0 && !ptr)
     {
-        ptr = pmem::pmem_malloc(size);
-    } else {
-        ptr = malloc(size);
-        if (size != 0 && !ptr)
-        {
-            NGRAPH_ERR << "malloc failed to allocate memory of size " << size;
-            throw std::bad_alloc();
-        }
+        NGRAPH_ERR << "malloc failed to allocate memory of size " << size;
+        throw std::bad_alloc();
     }
     return ptr;
 }
@@ -202,12 +196,7 @@ void ngraph::ngraph_free(void* ptr)
 {
     if (ptr)
     {
-        if (pmem::is_persistent_ptr(ptr))
-        {
-            pmem::pmem_free(ptr);
-        } else {
-            free(ptr);
-        }
+        free(ptr);
     }
 }
 

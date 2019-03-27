@@ -2,7 +2,9 @@
 #pragma once
 
 #ifdef NGRAPH_PMDK_ENABLE
+#include <string>
 #include "libpmemobj.h"
+
 namespace ngraph
 {
     namespace pmem

@@ -17,6 +17,10 @@ set(PMEMOBJ_LIB ${CMAKE_SHARED_LIBRARY_PREFIX}pmemobj${CMAKE_SHARED_LIBRARY_SUFF
 
 find_program(MAKE_EXE NAMES gmake nmake make)
 
+# CMake gets mad if the pmdk/include directory doesn't exist a generation time, even
+# though it will EVENTUALLY exist during build time.
+file(MAKE_DIRECTORY ${EXTERNAL_PROJECTS_ROOT}/pmdk/include)
+
 ExternalProject_Add(
     ext_pmdk
     PREFIX pmdk

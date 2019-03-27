@@ -16,6 +16,7 @@
 
 #include <algorithm>
 
+#include "ngraph/pmem.hpp"
 #include "ngraph/runtime/aligned_buffer.hpp"
 #include "ngraph/runtime/cpu/cpu_call_frame.hpp"
 #include "ngraph/runtime/cpu/cpu_external_function.hpp"
@@ -153,7 +154,9 @@ void runtime::cpu::CPU_CallFrame::setup_runtime_context()
         ctx->persistent_buffer = new AlignedBuffer(
                 m_external_function->get_pmem_buffer_size(), 
                 alignment,
-                true);
+                pmem::pmem_malloc,
+                pmem::pmem_free
+            );
     }
 
     const auto& mkldnn_emitter = m_external_function->get_mkldnn_emitter();

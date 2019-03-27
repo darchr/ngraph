@@ -59,7 +59,13 @@ runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_
     else if (buffer_size > 0)
     {
         size_t allocation_size = buffer_size + BufferAlignment;
-        auto ptr = ngraph_malloc(allocation_size, persistent);
+        void* ptr;
+        if (persistent)
+        {
+            ptr = pmem::pmem_malloc(allocation_size);
+        } else {
+            ptr = ngraph_malloc(allocation_size);
+        }            
 
         buffer = static_cast<char*>(ptr);
 
@@ -86,7 +92,12 @@ runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_
 
 runtime::cpu::CPUTensorView::~CPUTensorView()
 {
-    ngraph_free(buffer);
+    if (pmem::is_persistent_ptr(buffer))
+    {
+        pmem::pmem_free(buffer);
+    } else {
+        ngraph_free(buffer);
+    }
 }
 
 char* runtime::cpu::CPUTensorView::get_data_ptr()
