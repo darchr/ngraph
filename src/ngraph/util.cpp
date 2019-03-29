@@ -27,7 +27,6 @@
 #include "ngraph/graph_util.hpp"
 #include "ngraph/log.hpp"
 #include "ngraph/node.hpp"
-#include "ngraph/pmem.hpp"
 #include "ngraph/result_vector.hpp"
 #include "ngraph/runtime/backend.hpp"
 #include "ngraph/shape.hpp"
