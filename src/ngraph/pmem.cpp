@@ -53,6 +53,7 @@ void* ngraph::pmem::pmem_malloc(size_t size)
 
     if (yolo == -1)
     {
+        std::cout << "Error allocating Persistent memory of size: " << size << std::endl;
         NGRAPH_ERR << strerror(errno) << std::endl;
     }
     return ptr;
@@ -60,6 +61,7 @@ void* ngraph::pmem::pmem_malloc(size_t size)
 
 void ngraph::pmem::pmem_free(void* ptr)
 {
+    std::cout << "Freeing Persistent Pointer" << std::endl;
     PMEMoid oidp = pmemobj_oid(ptr);
     pmemobj_free(&oidp);
 }

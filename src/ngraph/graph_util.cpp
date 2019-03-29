@@ -146,6 +146,7 @@ void ngraph::replace_node(std::shared_ptr<Node> target, std::shared_ptr<Node> re
 
     if (target->get_users().empty())
     {
+        std::cout << target->get_name() << std::endl;
         throw ngraph_error("replacing an unreachable node");
     }
 
