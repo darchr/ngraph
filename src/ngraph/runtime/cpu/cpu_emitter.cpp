@@ -117,6 +117,7 @@
 #include "ngraph/runtime/cpu/op/lstm.hpp"
 #include "ngraph/runtime/cpu/op/matmul_bias.hpp"
 #include "ngraph/runtime/cpu/op/max_pool_with_indices.hpp"
+#include "ngraph/runtime/cpu/op/move.hpp"
 #include "ngraph/runtime/cpu/op/rnn.hpp"
 #include "ngraph/runtime/cpu/op/sigmoid.hpp"
 #include "ngraph/runtime/cpu/op/sigmoid_mul.hpp"
@@ -2752,6 +2753,22 @@ namespace ngraph
                 {
                     throw ngraph_error("MaxPoolWithIndices isn't supported");
                 }
+            }
+
+            template<>
+            void CPU_Emitter::EMITTER_DECL(ngraph::op::Move)
+            {
+                // Implementation is a simple memcpy
+                writer.block_begin();
+                writer << "if (" << out[0].get_name() << " != " << args[0].get_name()
+                       << ") {\n";
+                writer.block_begin();
+                writer << "memcpy(" << out[0].get_name() << ", " << args[0].get_name() << ", "
+                       << out[0].get_size() * out[0].get_element_type().size() << ");\n";
+                writer.block_end();
+                writer << "}\n";
+                writer.block_end();
+                return;
             }
 
             template <>

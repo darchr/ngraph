@@ -159,6 +159,7 @@
 #include "ngraph/runtime/cpu/op/lstm.hpp"
 #include "ngraph/runtime/cpu/op/matmul_bias.hpp"
 #include "ngraph/runtime/cpu/op/max_pool_with_indices.hpp"
+#include "ngraph/runtime/cpu/op/move.hpp"
 #include "ngraph/runtime/cpu/op/rnn.hpp"
 #include "ngraph/runtime/cpu/op/sigmoid.hpp"
 #include "ngraph/runtime/cpu/op/sigmoid_mul.hpp"
@@ -414,6 +415,8 @@ static const runtime::cpu::OpMap dispatcher{
     {TI(ngraph::op::GroupConvolutionBias),
      &runtime::cpu::CPU_Emitter::emit<op::GroupConvolutionBias>},
     {TI(ngraph::op::QuantizedConcat), &runtime::cpu::CPU_Emitter::emit<op::QuantizedConcat>},
+    // Add out custom move node
+    {TI(ngraph::op::Move), &runtime::cpu::CPU_Emitter::emit<op::Move>}
 };
 
 static void
@@ -711,8 +714,6 @@ using namespace ngraph::runtime;
                     tensor_index_map.insert({tv->get_name(), tensor_index++});
                     if (tv->get_pool_number() == static_cast<size_t>(runtime::cpu::MemoryLocation::PMEM))
                     {
-                        //std::cout << "Using Persistent Memory" << std::endl;
-                        //std::cout << "Node Name: " << node->get_name() << std::endl;
                         pmem_used = true;
                     }
                 }
@@ -1894,6 +1895,7 @@ string runtime::cpu::CPU_ExternalFunction::emit_op_as_function(const Node& node,
         {
             writer << ",";
         }
+
         writer << "\n";
         writer << tvw.get_type() << "* " << tvw.get_name();
         out.push_back(tvw);

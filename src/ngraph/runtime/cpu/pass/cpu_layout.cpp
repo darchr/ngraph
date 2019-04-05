@@ -163,18 +163,13 @@ static void set_output_layouts(shared_ptr<Node>& node, const vector<memory::desc
     {
         auto tv = node->get_output_tensor_ptr(i);
         auto tvl = tv->get_tensor_layout();
-        // Comment this out because YOLO
-        //
-        // A better solution would probably be to clear all the tensor layouts from a graph
-        // before recompilation.
-        //
-        //
-        //if (tvl)
-        //{
-        //    throw ngraph_error("Node (" + node->get_name() +
-        //                       ") output layout already set. This node is most likely present in "
-        //                       "multiple graphs which could lead to unpredictable results.");
-        //}
+
+        if (tvl)
+        {
+            throw ngraph_error("Node (" + node->get_name() +
+                               ") output layout already set. This node is most likely present in "
+                               "multiple graphs which could lead to unpredictable results.");
+        }
         auto layout = std::make_shared<ngraph::runtime::cpu::LayoutDescriptor>(*tv);
         layout->set_mkldnn_md(output_mds[i]);
         tv->set_tensor_layout(layout);

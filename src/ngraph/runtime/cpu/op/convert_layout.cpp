@@ -26,6 +26,19 @@ runtime::cpu::op::ConvertLayout::ConvertLayout(
 {
 }
 
+runtime::cpu::op::ConvertLayout::ConvertLayout(
+    const shared_ptr<Node> &arg,
+    const shared_ptr<Node> &target,
+    size_t input_index) :
+    ConvertLayout(
+        arg, 
+        0, 
+        dynamic_pointer_cast<runtime::cpu::LayoutDescriptor>(
+            target->get_inputs().at(input_index).get_tensor().get_tensor_layout())
+        )
+{
+}
+
 shared_ptr<Node>
     runtime::cpu::op::ConvertLayout::copy_with_new_args(const NodeVector& new_args) const
 {

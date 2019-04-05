@@ -61,7 +61,6 @@ void* ngraph::pmem::pmem_malloc(size_t size)
 
 void ngraph::pmem::pmem_free(void* ptr)
 {
-    std::cout << "Freeing Persistent Pointer" << std::endl;
     PMEMoid oidp = pmemobj_oid(ptr);
     pmemobj_free(&oidp);
 }
