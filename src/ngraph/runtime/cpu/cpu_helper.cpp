@@ -18,3 +18,13 @@ bool runtime::cpu::input_needs_conversion(const shared_ptr<Node>& node, size_t i
     return mkldnn_md.data.format != mkldnn::memory::format::format_undef;
 }
 
+int64_t runtime::cpu::get_input_format_string(const shared_ptr<Node>&node, size_t index)
+{
+    const mkldnn::memory::desc& mkldnn_md = 
+        runtime::cpu::mkldnn_utils::get_input_mkldnn_md(node.get(), index);
+
+    // In MKLDN, the memory formats are set by an enum. Here, we just convert that enum
+    // to an integer and return that. Unique integers represent different format kinds,
+    // so this will help is differentiate.
+    return static_cast<int64_t>(mkldnn_md.data.format);
+}

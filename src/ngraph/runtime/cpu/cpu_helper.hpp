@@ -7,7 +7,6 @@
 #pragma once
 
 #include "ngraph/node.hpp"
-#include "ngraph/runtime/cpu/cpu_backend_visibility.h"
 
 namespace ngraph
 {
@@ -15,9 +14,11 @@ namespace ngraph
     {
         namespace cpu
         {
-            CPU_BACKEND_API bool input_needs_conversion(
+            bool input_needs_conversion(
                 const std::shared_ptr<ngraph::Node>& node,
                 size_t input_index);
+
+            int64_t get_input_format_string(const std::shared_ptr<ngraph::Node>& node, size_t index);
         }
     }
 }
