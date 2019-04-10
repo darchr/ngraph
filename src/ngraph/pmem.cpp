@@ -3,10 +3,13 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <stdio.h>
 
 // ngraph/pmemobj stuff
 #include "pmem.hpp"
-#include "libpmemobj.h"
+#include "libpmem.h"
+#include "ngraph/util.hpp"
+//#include "libpmemobj.h"
 #include "ngraph/log.hpp"
 
 using namespace ngraph;
@@ -20,54 +23,58 @@ pmem::PMEMManager* ngraph::pmem::PMEMManager::getinstance()
     return m_instance = new pmem::PMEMManager();
 }
 
-void ngraph::pmem::PMEMManager::open_pool(std::string pool_name)
+void* ngraph::pmem::PMEMManager::malloc(size_t size)
 {
-    PMEMobjpool* pmem_pool = pmemobj_open(pool_name.c_str(), "");
-    
-    m_pool_name = pool_name;
-    m_pmem_pool = pmem_pool;
+    std::string pool_name = m_pool_dir + "pool_" + std::to_string(m_count);
+    m_count++;
+
+    void* pmem_pool = pmem_map_file(
+        pool_name.c_str(), size, PMEM_FILE_CREATE, 0666, nullptr, nullptr
+    );
+
+    // Register this pool and size
+    m_memory_map[pmem_pool] = std::pair<size_t, std::string>(size, pool_name);
+    return pmem_pool;
 }
 
-void ngraph::pmem::PMEMManager::create_pool(std::string pool_name, size_t size)
+void ngraph::pmem::PMEMManager::free(void* ptr)
 {
-    std::cout << "pmem: Creating Pool" << std::endl;
-    PMEMobjpool* pmem_pool = pmemobj_create(pool_name.c_str(), "", size, 0666);
-    std::cout << "pmem: Pool Pointer: " << pmem_pool << std::endl;
-
-    m_pool_name = pool_name;
-    m_pmem_pool = pmem_pool;
+    auto search = m_memory_map.find(ptr);
+    // If we dont' have this pointer, try a normal "free"
+    if (search == m_memory_map.end())
+    {
+        ngraph_free(ptr); 
+    } else {
+        // Unmap the pool, delete the file, and remove the pointer.
+        pmem_unmap(ptr, search->second.first);
+        remove(search->second.second.c_str());
+        m_memory_map.erase(ptr);
+    }
 }
 
-void ngraph::pmem::PMEMManager::close_pool()
+bool ngraph::pmem::PMEMManager::is_persistent(void* ptr)
 {
-    pmemobj_close(m_pmem_pool);
+    return m_memory_map.find(ptr) != m_memory_map.end();
 }
 
 void* ngraph::pmem::pmem_malloc(size_t size)
 {
     PMEMManager* manager = pmem::PMEMManager::getinstance();
 
-    PMEMoid oidp;
-    auto yolo = pmemobj_zalloc(manager->getpool(), &oidp, size, 0);
-    void* ptr = pmemobj_direct(oidp);
-
-    if (yolo == -1)
-    {
-        std::cout << "Error allocating Persistent memory of size: " << size << std::endl;
-        NGRAPH_ERR << strerror(errno) << std::endl;
-    }
+    void* ptr = manager->malloc(size);
     return ptr;
 }
 
 void ngraph::pmem::pmem_free(void* ptr)
 {
-    PMEMoid oidp = pmemobj_oid(ptr);
-    pmemobj_free(&oidp);
+    PMEMManager* manager = pmem::PMEMManager::getinstance();
+    manager->free(ptr);
 }
 
 bool ngraph::pmem::is_persistent_ptr(void* ptr)
 {
-    return pmemobj_pool_by_ptr(ptr) != nullptr;
+    PMEMManager* manager = pmem::PMEMManager::getinstance();
+    return manager->is_persistent(ptr);
 }
 
 #endif
