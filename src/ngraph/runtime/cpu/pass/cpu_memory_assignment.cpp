@@ -459,6 +459,12 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
                                 continue;
                             }
 
+                            // Skip if input and output live in different pools
+                            if (input_tensor->get_pool_number() != output_tensor->get_pool_number())
+                            {
+                                continue;
+                            }
+
                             auto bufferID = get_bufferID(input_tensor);
 
                             // tensor set is erased from the map when processing previous arg
@@ -474,6 +480,7 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
                             {
                                 continue;
                             }
+
                             // in-place concat
                             // move tensors in the set containing the input tensor to the set of output tensor
                             // then erase that input tensor set
