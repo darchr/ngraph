@@ -127,6 +127,71 @@ namespace ngraph
         }
 
         NGRAPH_ASSERT(nodes.size() == result_list.size());
+
+        // Secondary pass to handle associations.
+        // 
+        // This is definitely not optimized, but ... should work. Besides, it's a
+        // compiler right? Who cares if its fast for now.
+        //
+        // TODO: An alternate idea is to make node affinities a separate data structure
+        // that can be passed to topological sort. I have no idea if that would make
+        // things easier or more complicated though ...
+        //
+        // Also, use the normal for loop because we need the actual list iterator when
+        // using `std::list::splice`
+        std::unordered_set<std::string> handled_nodes; 
+        bool modified = true;
+        while (modified)
+        {
+            modified = false;
+            for (auto it = result_list.begin(); it != result_list.end(); ++it)
+            {
+                // Get the node from the result_iter
+                std::shared_ptr<Node> node = *it;
+
+                // Skip if we've already handled this node
+                if (handled_nodes.find(node->get_name()) != handled_nodes.end())
+                {
+                    continue;
+                }  
+
+                if (node->get_affinity() != AFFINITY_NONE)
+                {
+                    modified = true;
+
+                    // Find its associated node.
+                    std::string associate_name = node->get_associate(); 
+                    auto predicate = [&](std::shared_ptr<Node> n){
+                        return n->get_name() == associate_name;
+                    };
+
+                    auto pos = std::find_if(result_list.begin(), result_list.end(), predicate);
+                    NGRAPH_ASSERT(pos != result_list.end()); 
+
+                    // Splice this node to just after the found node.
+                    if (node->get_affinity() == AFFINITY_OUTPUT)
+                    {
+                        pos++;
+                    } 
+                    result_list.splice(pos, result_list, it);
+
+                    std::cout << "C++: Applying Node Affinity: "
+                              << node->get_name() << " to "
+                              << associate_name
+                              << std::endl;
+                }
+                handled_nodes.insert(node->get_name());
+
+                // Exit if we've modified the underlying list - need to start again.
+                if (modified == true)
+                {
+                    break;
+                }
+            }
+        }
+
+        NGRAPH_ASSERT(nodes.size() == result_list.size());
+
         return result_list;
     }
 

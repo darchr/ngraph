@@ -69,6 +69,20 @@ namespace ngraph
                                                          size_t i);
     const NodeVector& check_single_output_args(const NodeVector& args);
 
+    // Enum for setting node affinities
+    //
+    // For insertion of move nodes, we have to ensure that move nodes get scheduled
+    // either immediately following or immediately before the nodes they are moving
+    // data to.
+    //
+    // AFFINITY_NODE: Node has no affinity and can be scheduled wherever topological_sort
+    // puts it.
+    //
+    // AFFINITY_OUTPUT: Node should be located immediately after its associated node.
+    //
+    // AFFINITY_INPUT: Node should be located immediately before its associated node.
+    enum NodeAffinity { AFFINITY_NONE, AFFINITY_OUTPUT, AFFINITY_INPUT };
+
     /// Nodes are the backbone of the graph of Value dataflow. Every node has
     /// zero or more nodes as arguments and one value, which is either a tensor
     /// or a (possibly empty) tuple of values.
@@ -258,6 +272,16 @@ namespace ngraph
         bool operator<(const Node& other) const { return m_instance_id < other.m_instance_id; }
         static const size_t placement_invalid = -1;
 
+        /////
+        ///// Affinities
+        /////
+
+        NodeAffinity get_affinity() { return m_affinity; }
+        void set_affinity(NodeAffinity affinity) { m_affinity = affinity; }
+
+        const std::string& get_associate() const { return m_associate; }
+        void set_assoticate(std::string associate) { m_associate = associate; }
+
     protected:
         std::set<std::shared_ptr<Node>> m_control_dependencies;
         void set_output_size(size_t n);
@@ -272,6 +296,15 @@ namespace ngraph
         std::unordered_map<Node*, autodiff::Adjoints> m_adjoint_map;
         Placement m_placement = Placement::DEFAULT;
         size_t m_placement_index = placement_invalid;
+
+        /////
+        ///// Affinities
+        /////
+
+        // Affinity type of this node.
+        NodeAffinity m_affinity = AFFINITY_NONE; 
+        // The node this node should be associated with.
+        std::string m_associate;
     };
 
     class NodeValidationError : public AssertionFailure
