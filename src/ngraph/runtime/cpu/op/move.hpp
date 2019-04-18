@@ -10,7 +10,7 @@ namespace ngraph
         class Move : public Op
         {
         public:
-            CPU_BACKEND_API Move(const std::shared_ptr<Node>& input);
+            CPU_BACKEND_API Move(const std::shared_ptr<Node>& input, size_t n);
 
             virtual std::shared_ptr<Node>
                 copy_with_new_args(const NodeVector& new_args) const override;
@@ -22,6 +22,8 @@ namespace ngraph
             //
             //virtual void generate_adjoints(autodiff::Adjoints& adjoints,
             //                               const NodeVector& deltas) override;
+        protected:
+            size_t m_n;
         };
     }
 }
