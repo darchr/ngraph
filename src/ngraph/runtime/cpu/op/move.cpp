@@ -13,7 +13,7 @@ shared_ptr<Node> op::Move::copy_with_new_args(const NodeVector& new_args) const
     }
 
     // This is wrong - need to fix
-    return make_shared<Move>(new_args.at(0), 0);
+    return make_shared<Move>(new_args.at(0), m_n);
 }
 
 op::Move::Move(const shared_ptr<Node>& input, size_t n)
@@ -22,11 +22,9 @@ op::Move::Move(const shared_ptr<Node>& input, size_t n)
 {
     constructor_validate_and_infer_types();
 
-    set_output_type(0, get_input_element_type(0), get_input_shape(0));
+    set_output_type(0, get_input_element_type(m_n), get_input_partial_shape(m_n));
 
     // Manually assign layouts since this node is usually inserted after compilation
     auto tv = input->get_output_tensor_ptr(m_n);
-    auto tvl = tv->get_tensor_layout();
-
-    this->get_output_tensor_ptr(0)->set_tensor_layout(tv->get_tensor_layout());
+    get_output_tensor_ptr(0)->set_tensor_layout(tv->get_tensor_layout());
 }

@@ -360,6 +360,12 @@ namespace ngraph
                                  const std::shared_ptr<Node>& dst_node,
                                  const std::shared_ptr<Node>& new_node);
 
+    void my_insert_new_node_between(const std::shared_ptr<Node>& src_node,
+                                         size_t src_output_index,
+                                         const std::shared_ptr<Node>& dst_node,
+                                         size_t dst_input_index,
+                                         const std::shared_ptr<Node>& new_node);
+
     std::shared_ptr<Node> make_zero(const element::Type& element_type, const Shape& shape);
 
     std::shared_ptr<Node> make_constant_from_string(std::string val,

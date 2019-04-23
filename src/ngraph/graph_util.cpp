@@ -402,8 +402,25 @@ void ngraph::insert_new_node_between(const shared_ptr<Node>& src_node,
                                      const shared_ptr<Node>& new_node)
 {
     // Fix input / output
+    std::cout << "A" << std::endl;
     descriptor::Input* dst_input = dst_node->get_input_from(src_node);
+    std::cout << "B" << std::endl;
     descriptor::Output* src_output = src_node->get_output_to(dst_node);
+    std::cout << "C" << std::endl;
+    src_output->remove_input(dst_input);    // Remove [0]
+    std::cout << "D" << std::endl;
+    dst_input->replace_output(new_node, 0); // Remove [0] (again), add [8], remove [1], add [9]
+    std::cout << "E" << std::endl;
+}
+
+void ngraph::my_insert_new_node_between(const shared_ptr<Node>& src_node,
+                                     size_t src_output_index,
+                                     const shared_ptr<Node>& dst_node,
+                                     size_t dst_input_index,
+                                     const shared_ptr<Node>& new_node)
+{
+    descriptor::Input* dst_input = &dst_node->get_inputs().at(dst_input_index);
+    descriptor::Output* src_output = &src_node->get_outputs().at(src_output_index);
     src_output->remove_input(dst_input);    // Remove [0]
     dst_input->replace_output(new_node, 0); // Remove [0] (again), add [8], remove [1], add [9]
 }
