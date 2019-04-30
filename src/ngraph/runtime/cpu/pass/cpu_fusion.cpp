@@ -802,7 +802,7 @@ void ngraph::runtime::cpu::pass::CPUFusion::construct_batch_norm_relu()
         std::vector<std::shared_ptr<Node>> mgoes(m_bn->get_outputs().size());
         for (auto bn_in : m_bn->get_output_inputs(0))
         {
-            auto mgoe = std::dynamic_pointer_cast<op::GetOutputElement>(bn_in->get_node());
+            auto mgoe = std::dynamic_pointer_cast<ngraph::op::GetOutputElement>(bn_in->get_node());
             NGRAPH_ASSERT(mgoe);
             mgoes[mgoe->get_n()] = mgoe;
         }
@@ -826,7 +826,10 @@ void ngraph::runtime::cpu::pass::CPUFusion::construct_batch_norm_relu()
 
         for (size_t i = 0; i < mgoes.size(); i++)
         {
-            ngraph::replace_node(mgoes.at(i), new_nodes[i]);
+            if (mgoes.at(i))
+            {
+                ngraph::replace_node(mgoes.at(i), new_nodes[i]);
+            }
         }
         return true;
     };

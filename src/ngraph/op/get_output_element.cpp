@@ -51,7 +51,6 @@ NodeVector op::GetOutputElement::get_arguments() const
 void op::GetOutputElement::generate_adjoints(autodiff::Adjoints& adjoints, const NodeVector& deltas)
 {
     auto delta = deltas.at(0);
-
     adjoints.add_delta(get_inputs().at(0).get_output().get_node(), delta, get_n());
 }
 

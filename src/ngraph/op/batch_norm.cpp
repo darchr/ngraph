@@ -78,6 +78,7 @@ void ngraph::op::BatchNormTraining::generate_adjoints(autodiff::Adjoints& adjoin
     auto gamma = get_argument(0);
     auto beta = get_argument(1);
     auto input = get_argument(2);
+
     std::shared_ptr<Node> mean = nullptr;
     std::shared_ptr<Node> var = nullptr;
 

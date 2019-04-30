@@ -28,6 +28,9 @@ void* ngraph::pmem::PMEMManager::malloc(size_t size)
     std::string pool_name = m_pool_dir + "pool_" + std::to_string(m_count);
     m_count++;
 
+    // Make sure we at least make a block sized file.
+    size = std::max(size, static_cast<size_t>(4096));
+
     void* pmem_pool = pmem_map_file(
         pool_name.c_str(), size, PMEM_FILE_CREATE, 0666, nullptr, nullptr
     );

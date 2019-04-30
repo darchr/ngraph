@@ -285,8 +285,8 @@ namespace ngraph
         NodeAffinity get_affinity() { return m_affinity; }
         void set_affinity(NodeAffinity affinity) { m_affinity = affinity; }
 
-        const std::string& get_associate() const { return m_associate; }
-        void set_assoticate(std::string associate) { m_associate = associate; }
+        const std::vector<std::string>& get_associates() const { return m_associates; }
+        void add_associate(std::string associate) { m_associates.push_back(associate); }
 
     protected:
         std::set<std::shared_ptr<Node>> m_control_dependencies;
@@ -310,7 +310,7 @@ namespace ngraph
         // Affinity type of this node.
         NodeAffinity m_affinity = AFFINITY_NONE; 
         // The node this node should be associated with.
-        std::string m_associate;
+        std::vector<std::string> m_associates;
     };
 
     class NodeValidationError : public AssertionFailure

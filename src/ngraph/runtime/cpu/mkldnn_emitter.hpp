@@ -71,7 +71,10 @@ namespace ngraph
             class MKLDNNWorkspace
             {
             public:
-                MKLDNNWorkspace(size_t size) { buf = reinterpret_cast<char*>(ngraph_malloc(size)); }
+                MKLDNNWorkspace(size_t size) { 
+                    std::cout << "MKLDNN Emitter: " << size << std::endl;
+                    buf = reinterpret_cast<char*>(ngraph_malloc(size)); 
+                }
                 ~MKLDNNWorkspace() { ngraph_free(buf); }
                 char* buf;
 

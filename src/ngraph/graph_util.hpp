@@ -160,25 +160,26 @@ namespace ngraph
                     modified = true;
 
                     // Find its associated node.
-                    std::string associate_name = node->get_associate(); 
+                    std::vector<std::string> associates = node->get_associates(); 
                     auto predicate = [&](std::shared_ptr<Node> n){
-                        return n->get_name() == associate_name;
+                        return std::find(associates.begin(), associates.end(), n->get_name()) 
+                            != associates.end();
                     };
 
                     auto pos = std::find_if(result_list.begin(), result_list.end(), predicate);
                     NGRAPH_ASSERT(pos != result_list.end()); 
 
                     // Splice this node to just after the found node.
-                    if (node->get_affinity() == AFFINITY_OUTPUT)
+                    if (node->get_affinity() == AFFINITY_INPUT)
                     {
                         pos++;
                     } 
                     result_list.splice(pos, result_list, it);
 
-                    std::cout << "C++: Applying Node Affinity: "
-                              << node->get_name() << " to "
-                              << associate_name
-                              << std::endl;
+                    //std::cout << "C++: Applying Node Affinity: "
+                    //          << node->get_name() << " to "
+                    //          << associate_name
+                    //          << std::endl;
                 }
                 handled_nodes.insert(node->get_name());
 

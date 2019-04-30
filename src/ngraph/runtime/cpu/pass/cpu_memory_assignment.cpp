@@ -919,6 +919,18 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
         }
     }
 
+    std::cout << "cpu_memory_assignemnt: max allocated for mm is " 
+              << mm.max_allocated() << std::endl;
+
+    std::cout << "cpu_memory_assignment: max allocated for mm_caching is " 
+              << mm_caching.max_allocated() << std::endl;
+
+    std::cout << "cpu_memory_assignment: max allocated in total is " 
+              << mm.max_allocated() + mm_caching.max_allocated() << std::endl;
+
+    std::cout << "cpu_memory_assignment: max allocated for mm_persistent is " 
+              << mm_persistent.max_allocated() << std::endl;
+
     NGRAPH_DEBUG << "cpu_memory_assignemnt: max allocated for mm is " << mm.max_allocated();
     NGRAPH_DEBUG << "cpu_memory_assignment: max allocated for mm_caching is "
                  << mm_caching.max_allocated();
