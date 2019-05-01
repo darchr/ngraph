@@ -2760,7 +2760,8 @@ namespace ngraph
             {
                 // Implementation is a simple memcpy
                 auto move_node = static_cast<const ngraph::op::Move*>(node);
-                size_t n = move_node->get_n();
+                //size_t n = move_node->get_n();
+                size_t n = 0; 
 
                 // Select kernel based on stransfer size. Small transfers should just use
                 // memcpy

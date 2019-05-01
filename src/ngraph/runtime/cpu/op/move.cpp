@@ -27,4 +27,8 @@ op::Move::Move(const shared_ptr<Node>& input, size_t n)
     // Manually assign layouts since this node is usually inserted after compilation
     auto tv = input->get_output_tensor_ptr(m_n);
     get_output_tensor_ptr(0)->set_tensor_layout(tv->get_tensor_layout());
+
+    // Need to manually assign the correct output form the input
+    m_inputs.clear();
+    m_inputs.emplace_back(this, 0, input->get_outputs().at(this->get_n()));
 }
