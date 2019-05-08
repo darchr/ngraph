@@ -18,7 +18,8 @@ namespace ngraph
                 const std::shared_ptr<ngraph::Node>& node,
                 size_t input_index);
 
-            int64_t get_input_format_string(const std::shared_ptr<ngraph::Node>& node, size_t index);
+            int64_t get_input_format_int(const std::shared_ptr<ngraph::Node>& node, size_t index);
+            std::string get_mkldnn_string(int64_t enum_int);
         }
     }
 }
