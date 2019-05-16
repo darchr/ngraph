@@ -20,6 +20,7 @@
 #include "ngraph/runtime/cpu/mkldnn_utils.hpp"
 #include "ngraph/runtime/cpu/op/group_conv.hpp"
 #include "ngraph/runtime/cpu/op/group_conv_bias.hpp"
+#include "ngraph/runtime/cpu/op/rnn.hpp"
 
 using namespace std;
 using namespace ngraph;
@@ -83,6 +84,8 @@ namespace ngraph
 
                 // ConvertLayout needs 3 primitives: input, result, and reorder.
                 size_t reorder_index = mkldnn_emitter->reserve_primitive_space(3);
+//=======
+                //size_t reorder_index = mkldnn_emitter->build_reorder(input_desc, result_desc);
                 auto& deps = mkldnn_emitter->get_primitive_deps(reorder_index);
                 auto functor = [&, input_desc, result_desc, reorder_index](
                     CPURuntimeContext* ctx, CPUExecutionContext* ectx) {

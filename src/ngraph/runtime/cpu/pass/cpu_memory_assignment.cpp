@@ -670,7 +670,9 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
 
     // More persistent memory support - instantiate another memory manager for dealing with
     // tensors that are marked as persistent
-    ngraph::pass::MemoryManager mm_persistent(m_alignment, m_disable_memory_sharing);
+    //
+    // Align to 2MiB
+    ngraph::pass::MemoryManager mm_persistent(2097152, m_disable_memory_sharing);
 
     // memory manager for cacheable ops, memory allocation will never be freed
     ngraph::pass::MemoryManager mm_caching(m_alignment, true);

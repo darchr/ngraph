@@ -892,6 +892,58 @@ namespace ngraph
 
                 void build_rnn_forward(const mkldnn::rnn_forward::desc& desc, size_t rnn_idx);
 
+                template <typename OP>
+                std::unordered_map<std::string, size_t>
+                    build_rnn_backward(const ngraph::Node* node,
+                                       const std::vector<TensorViewWrapper>& args,
+                                       const std::vector<TensorViewWrapper>& out)
+
+                {
+                    auto rnn_bprop_op = static_cast<const OP*>(node);
+                    auto rnn_attributes = rnn_bprop_op->get_rnn_attributes();
+                    auto et = node->get_input_element_type(0);
+                    Shape src_layer_dims{
+                        rnn_attributes.timestep, rnn_attributes.batch, rnn_attributes.slc};
+
+                    Shape src_iter_dims{rnn_attributes.layer,
+                                        rnn_attributes.direction,
+                                        rnn_attributes.states,
+                                        rnn_attributes.batch,
+                                        rnn_attributes.slc};
+
+                    Shape wei_layer_dims{rnn_attributes.layer,
+                                         rnn_attributes.direction,
+                                         rnn_attributes.slc,
+                                         rnn_attributes.gates,
+                                         rnn_attributes.sic};
+
+                    Shape wei_iter_dims{rnn_attributes.layer,
+                                        rnn_attributes.direction,
+                                        rnn_attributes.sic,
+                                        rnn_attributes.gates,
+                                        rnn_attributes.sic};
+
+                    Shape bias_dims{rnn_attributes.layer,
+                                    rnn_attributes.direction,
+                                    rnn_attributes.gates,
+                                    rnn_attributes.sic};
+
+                    return build_rnn_backword_primitive(src_layer_dims,
+                                                        src_iter_dims,
+                                                        wei_layer_dims,
+                                                        wei_iter_dims,
+                                                        bias_dims,
+                                                        et);
+                }
+
+                std::unordered_map<std::string, size_t>
+                    build_rnn_backword_primitive(Shape& src_layer_dims,
+                                                 Shape& src_iter_dims,
+                                                 Shape& wei_layer_dims,
+                                                 Shape& wei_iter_dims,
+                                                 Shape& bias_dims,
+                                                 ngraph::element::Type& et);
+
                 size_t build_concat(const std::vector<mkldnn::memory::desc>& inputs_data_desc,
                                     const mkldnn::memory::desc& result_desc,
                                     const size_t concat_dim);

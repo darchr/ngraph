@@ -3986,3 +3986,92 @@ TEST(cpu_fusion, bi_rnn_interpreter_vs_cpu)
         EXPECT_TRUE(test::all_close(cpu_results.at(i), int_results.at(i), 1.0e-4f, 1.0e-4f));
     }
 }
+
+/*
+TEST(cpu_fusion, autodiff_rnn_1cell)
+{
+    auto src_layer = make_shared<op::Parameter>(element::f32, Shape{1, 1});
+    auto src_iter = make_shared<op::Parameter>(element::f32, Shape{2, 1});
+    auto weights_layer = make_shared<op::Parameter>(element::f32, Shape{4, 1});
+    auto weights_layer_reshape = make_shared<op::Parameter>(element::f32, Shape{1, 4});
+    auto weights_iter = make_shared<op::Parameter>(element::f32, Shape{4, 1});
+    auto weights_iter_reshape = make_shared<op::Parameter>(element::f32, Shape{1, 4});
+    auto biases = make_shared<op::Parameter>(element::f32, Shape{4});
+    auto diff_dst_layer = make_shared<op::Parameter>(element::f32, Shape{1, 1});
+    auto diff_dst_iter = make_shared<op::Parameter>(element::f32, Shape{2, 1});
+
+    const int number_of_timesteps = 1;
+    const int number_of_gates_per_cell = 4;
+    const int src_seq_length = 1;
+    const int num_rnn_cell_states = 2;
+    const int rnn_direction = 1;
+    const int num_of_rnn_fused_layer = 1;
+    auto rnn_node = make_shared<op::Rnn>(src_layer,
+                                         src_iter,
+                                         weights_layer_reshape,
+                                         weights_iter_reshape,
+                                         biases,
+                                         number_of_timesteps,
+                                         number_of_gates_per_cell,
+                                         src_seq_length,
+                                         num_rnn_cell_states,
+                                         rnn_direction,
+                                         num_of_rnn_fused_layer);
+
+    auto dst_layer = std::make_shared<op::GetOutputElement>(rnn_node, 0);
+    auto dst_iter = std::make_shared<op::GetOutputElement>(rnn_node, 1);
+
+    auto cpu_f = make_shared<Function>(NodeVector{dst_layer, dst_iter},
+                                       ParameterVector{src_layer,
+                                                       src_iter,
+                                                       weights_layer,
+                                                       weights_layer_reshape,
+                                                       weights_iter,
+                                                       weights_iter_reshape,
+                                                       biases});
+
+    ngraph::autodiff::Adjoints adjoints(NodeVector{dst_layer, dst_iter},
+                                        NodeVector{diff_dst_layer, diff_dst_iter});
+
+    auto diff_src_layer = adjoints.backprop_node(src_layer);
+    auto diff_src_iter = adjoints.backprop_node(src_iter);
+    auto diff_weights_layer = adjoints.backprop_node(weights_layer_reshape);
+    auto diff_weights_iter = adjoints.backprop_node(weights_iter_reshape);
+    auto diff_bias = adjoints.backprop_node(biases);
+
+    auto cpu_df = make_shared<Function>(
+        NodeVector{diff_src_layer, diff_src_iter, diff_weights_layer, diff_weights_iter, diff_bias},
+        ParameterVector{src_layer,
+                        src_iter,
+                        weights_layer,
+                        weights_layer_reshape,
+                        weights_iter,
+                        weights_iter_reshape,
+                        biases,
+                        diff_dst_layer,
+                        diff_dst_iter});
+
+    test::Uniform<float> rng(-1.0f, 1.0f);
+    auto backend = runtime::Backend::create("CPU");
+    std::vector<std::shared_ptr<ngraph::runtime::Tensor>> args;
+
+    for (shared_ptr<op::Parameter> param : cpu_df->get_parameters())
+    {
+        auto arg_tensor = backend->create_tensor<float>(param->get_shape());
+        copy_data(arg_tensor, vector<float>(shape_size(param->get_shape()), 1));
+        args.push_back(arg_tensor);
+    }
+
+    auto diff_src_layer_t = backend->create_tensor(element::f32, diff_src_layer->get_shape());
+    auto diff_src_iter_t = backend->create_tensor(element::f32, diff_src_iter->get_shape());
+    auto diff_wei_layer_t = backend->create_tensor(element::f32, diff_weights_layer->get_shape());
+    auto diff_wei_iter_t = backend->create_tensor(element::f32, diff_weights_iter->get_shape());
+    auto diff_bias_t = backend->create_tensor(element::f32, diff_bias->get_shape());
+
+    std::vector<std::shared_ptr<ngraph::runtime::Tensor>> results{
+        diff_src_layer_t, diff_src_iter_t, diff_wei_layer_t, diff_wei_iter_t, diff_bias_t};
+    auto handle = backend->compile(cpu_df);
+    handle->call_with_validate(results, args);
+
+}
+*/

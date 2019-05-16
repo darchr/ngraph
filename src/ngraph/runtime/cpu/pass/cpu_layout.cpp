@@ -2000,6 +2000,20 @@ namespace ngraph
                 }
 
                 template <>
+                void CPULayout::LAYOUT_DECL(ngraph::op::RnnBackprop)
+                {
+                    if (mkldnn_utils::use_mkldnn_kernel(node.get()))
+                    {
+                        set_native_layouts(external_function, node, false);
+                    }
+                    else
+                    {
+                        throw ngraph_error(
+                            "RNNBackprop fused op is only supported in MKLDNN for now.");
+                    }
+                }
+
+                template <>
                 void CPULayout::LAYOUT_DECL(ngraph::op::Softmax)
                 {
                     // Softmax cannot use the default unary layout method since the kernels
@@ -2105,6 +2119,7 @@ static const runtime::cpu::pass::LayoutOpMap s_dispatcher{
      &runtime::cpu::pass::CPULayout::layout<ngraph::op::SigmoidBackprop>},
     {TI(ngraph::op::Lstm), &runtime::cpu::pass::CPULayout::layout<ngraph::op::Lstm>},
     {TI(ngraph::op::Rnn), &runtime::cpu::pass::CPULayout::layout<ngraph::op::Rnn>},
+    {TI(ngraph::op::RnnBackprop), &runtime::cpu::pass::CPULayout::layout<ngraph::op::RnnBackprop>},
     {TI(ngraph::op::Softmax), &runtime::cpu::pass::CPULayout::layout<ngraph::op::Softmax>},
     {TI(ngraph::op::ConvolutionAdd),
      &runtime::cpu::pass::CPULayout::layout<ngraph::op::ConvolutionAdd>},
