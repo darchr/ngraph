@@ -2758,34 +2758,29 @@ namespace ngraph
             template<>
             void CPU_Emitter::EMITTER_DECL(ngraph::op::Move)
             {
-                // Implementation is a simple memcpy
-                auto move_node = static_cast<const ngraph::op::Move*>(node);
-                //size_t n = move_node->get_n();
-                size_t n = 0; 
-
                 // Select kernel based on stransfer size. Small transfers should just use
                 // memcpy
                 //
                 // The size limit is just a heuristic right now. And by "heuristic" I mean
                 // I just made it up.
                 // TODO: Figure out a more exact way of doing this.
-                size_t bytes = out[0].get_size() * out[0].get_element_type().size();
+                size_t bytes = args[0].get_tensor()->size();
                 if (bytes <= 1024 * 1024)
                 {
                     writer.block_begin();
-                    writer << "if (" << out[0].get_name() << " != " << args[n].get_name()
+                    writer << "if (" << out[0].get_name() << " != " << args[0].get_name()
                            << ")\n";
                     writer.block_begin();
                     writer << "memcpy(" << out[0].get_name() << ", "
-                           << args[n].get_name() << ", "
-                           << out[0].get_size() * out[0].get_element_type().size() << ");\n";
+                           << args[0].get_name() << ", "
+                           << bytes << ");\n";
                     writer.block_end();
                     writer.block_end();
                 } else {
                     writer.block_begin();
                     // Cast the output and args array to vectors of __m512i to do the copy
                     writer << "__m512i* src = reinterpret_cast<__m512i*>("
-                           << args[n].get_name() << ");\n";
+                           << args[0].get_name() << ");\n";
 
                     writer << "__m512i* dst = reinterpret_cast<__m512i*>("
                            << out[0].get_name() << ");\n";
@@ -2799,8 +2794,19 @@ namespace ngraph
                     // Because the default alignment of memory allocations if 4096 bytes,
                     // we do not have to worry about accidentally colliding/clobbering
                     // neighboring data blocks
-                    size_t array_bytes = out[0].get_size() * out[0].get_element_type().size();
+                    size_t array_bytes = args[0].get_tensor()->size();
                     size_t num_elements = (array_bytes + 64 - 1) / 64;
+
+                    // More debug info
+                    //std::cout << args[0].get_name() << std::endl;
+                    //std::cout << args[0].get_size() << std::endl;
+                    //std::cout << args[0].get_element_type().c_type_string() << std::endl;
+                    //std::cout << args[0].get_element_type().size() << std::endl;
+                    //std::cout << array_bytes << std::endl;
+                    //std::cout << num_elements << std::endl;
+                    //std::cout << args[0].get_tensor()->get_name() << std::endl;
+                    //std::cout << args[0].get_tensor()->size() << std::endl;
+                    //std::cout << std::endl;
 
                     // Quick check for now. In the future, I'll move this into the Move node
                     // itself. Basically, if we're writing to PMEM, we only want 4 threads
@@ -2818,7 +2824,6 @@ namespace ngraph
                     writer.block_begin();
                     writer << "__m512i x = _mm512_stream_load_si512(&src[i]);\n";
                     writer << "_mm512_stream_si512(&dst[i], x);\n";
-                    //writer << out[0].get_name() << "[i] = " << args[n].get_name() << "[i];\n";
                     writer.block_end();
                     writer.block_end();
                 }

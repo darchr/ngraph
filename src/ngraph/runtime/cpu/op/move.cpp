@@ -30,5 +30,5 @@ op::Move::Move(const shared_ptr<Node>& input, size_t n)
 
     // Need to manually assign the correct output form the input
     m_inputs.clear();
-    m_inputs.emplace_back(this, 0, input->get_outputs().at(this->get_n()));
+    m_inputs.emplace_back(this, 0, input->get_outputs().at(m_n));
 }

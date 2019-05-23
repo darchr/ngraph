@@ -894,6 +894,8 @@ using namespace ngraph::runtime;
                     parameter_nodes.end(), node_output_names.begin(), node_output_names.end());
                 writer << join(parameter_nodes);
                 writer << ")\n";
+                // Printf debugging FTW!
+                //writer << "std::cout << \"Executing: " << node->get_name() << "\\n\";\n";
             }
 
             // Emit operation body

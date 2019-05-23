@@ -848,6 +848,7 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
             NGRAPH_ASSERT(buffer_it != m_bufferID_to_tensorSets.end());
             auto tensor_set = buffer_it->second.second;
             size_t size = tensor->size();
+            //std::cout << tensor->get_name() << ": " << size << std::endl;
             for (auto e : tensor_set)
             {
                 if (e->size() > size)
