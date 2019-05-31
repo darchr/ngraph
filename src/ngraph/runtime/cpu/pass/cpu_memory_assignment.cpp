@@ -899,13 +899,17 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
             }
         }
     }
+    // Disable these optimizations for consistency
+    //
+    // I'm doing recompilation in many stages of the upper level optimization routines,
+    // and somewhere these in-place ops are screwing something up.
 
     // update offsets in concat and slice tensors set.
     // In place concatenation optimization
-    process_in_place_concat(ops);
+    //process_in_place_concat(ops);
 
     // In place slice optimization
-    process_in_place_slice(ops);
+    //process_in_place_slice(ops);
 
     //update the offset for intermediate tensors in tensor_caching
     auto start = mm.max_allocated();
