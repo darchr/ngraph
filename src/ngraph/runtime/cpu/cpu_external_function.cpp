@@ -416,8 +416,9 @@ static const runtime::cpu::OpMap dispatcher{
     {TI(ngraph::op::GroupConvolutionBias),
      &runtime::cpu::CPU_Emitter::emit<op::GroupConvolutionBias>},
     {TI(ngraph::op::QuantizedConcat), &runtime::cpu::CPU_Emitter::emit<op::QuantizedConcat>},
-    // Add out custom move node
-    {TI(ngraph::op::Move), &runtime::cpu::CPU_Emitter::emit<op::Move>}
+    // Add our custom move nodes
+    {TI(ngraph::op::Move), &runtime::cpu::CPU_Emitter::emit<op::Move>},
+    {TI(ngraph::op::MoveAsync), &runtime::cpu::CPU_Emitter::emit<op::MoveAsync>}
 };
 
 static void
@@ -835,6 +836,31 @@ using namespace ngraph::runtime;
             }
         }
 
+        // Find asynchronous overlaps
+        std::map<std::string, std::vector<shared_ptr<Node>>> async_map;
+        for (shared_ptr<Node> node : ordered_ops)
+        {
+            // If we find an asynchronous node
+            if (auto n = std::dynamic_pointer_cast<ngraph::op::MoveAsync>(node))
+            {
+                std::cout << "Found Async Move Node: " << n->get_name() << std::endl;
+
+                std::string fellow = n->get_fellow();
+                std::cout << "Moving Across: " << fellow << std::endl;
+                // Look to see if we have already found this fellow.
+                // If so, get the vector that it maps to and add this mode node there.
+                // Otherwise, create the vector.
+                auto handle = async_map.find(fellow);
+                if (handle == async_map.end())
+                {
+                    std::vector<shared_ptr<Node>> v{node};
+                    async_map[fellow] = v;
+                } else {
+                    async_map[fellow].push_back(node);
+                }
+            }
+        }
+
         for (shared_ptr<Node> node : ordered_ops)
         {
             auto& n = *node; // Work around a compiler warning (*node inside typeid may have effects
@@ -861,6 +887,79 @@ using namespace ngraph::runtime;
                 out.push_back(TensorViewWrapper(tv, m_variable_name_map[tv->get_name()]));
                 node_output_names.emplace_back(tv->get_name());
             }
+
+            /////
+            ///// Begin Kernel Emission
+            /////
+
+            // Strategy for overlapping communication
+            //
+            // 1. Wrap the whole block in a #pragma omp parallel block
+            // 2. Have one omp section perform the copy
+            // 3. The second omp section wraps the actual computation
+            // 4. With OMP_NESTED=true, the second thread should spawn the necessary number
+            //    of threads when it reaches the kernel implementation ... hopefully
+
+            // Check to see if there are overlapping communications
+            auto handle = async_map.find(node->get_name());
+            bool overlap_communication = (handle != async_map.end());
+            if (overlap_communication)
+            {
+                std::vector<shared_ptr<Node>> overlaps = async_map[node->get_name()];
+                std::cout << "Emitting " << overlaps.size() << " async moves across "
+                          << node->get_name() << std::endl;
+
+                // We have to queue up a set of copies based on the inputs and outputs of
+                // the queued nodes.
+                vector<string> _input_names;
+                vector<string> _output_names;
+                vector<uint64_t> _copy_sizes;
+                for (shared_ptr<Node> __node : overlaps)
+                {
+                    // These should all be AsyncMove nodes and thus should have only one
+                    // input and output
+                    for (const descriptor::Input& input : __node->get_inputs())
+                    {
+                        const descriptor::Output& output = input.get_output();
+                        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+                        _input_names.emplace_back(m_variable_name_map[tv->get_name()]);
+                        _copy_sizes.push_back(tv->size());
+                    }
+                    for (const descriptor::Output& output : __node->get_outputs())
+                    {
+                        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+                        _output_names.emplace_back(m_variable_name_map[tv->get_name()]);
+                    }
+                }
+
+                // Print out what we've found
+                std::cout << "Showing AsyncMoves" << std::endl;
+                for (int64_t i = 0; i < _input_names.size(); i++)
+                {
+                    std::cout << "input: " << _input_names[i] << std::endl
+                              << "output: " << _output_names[i] << std::endl
+                              << "size: " << _copy_sizes[i] << std::endl;
+                }
+
+                // Emit memcpy's with reckless abandon!!
+                writer << "#pragma omp parallel sections num_threads(2)\n";
+                writer.block_begin();
+                writer << "#pragma omp section\n";
+                writer.block_begin();
+                //writer << "std::cout << \"Executing Copies\" << std::endl;\n";
+                for (int64_t i = 0; i < _input_names.size(); i++)
+                {
+                    writer  << "memcpy(" << _output_names[i] << ", " <<
+                            _input_names[i] << ", " <<
+                            _copy_sizes[i] << ");\n";
+                }
+                writer.block_end();
+                writer << "#pragma omp section\n";
+                // Disable nested parallelism here
+                writer.block_begin();
+                //writer << "std::cout << \"Executing Body\" << std::endl;\n";
+            }
+
 
             // Emit operation prologue
             if (!node->is_parameter() && !node->is_constant())
@@ -895,7 +994,7 @@ using namespace ngraph::runtime;
                 writer << join(parameter_nodes);
                 writer << ")\n";
                 // Printf debugging FTW!
-                //writer << "std::cout << \"Executing: " << node->get_name() << "\\n\";\n";
+                writer << "std::cout << \"Executing: " << node->get_name() << "\\n\";\n";
             }
 
             // Emit operation body
@@ -994,6 +1093,14 @@ using namespace ngraph::runtime;
                 writer.indent--;
                 writer << "}\n";
                 emit_debug_function_exit(writer, node.get(), in, out);
+
+                // End the overlapping communications
+                if (overlap_communication)
+                {
+                    writer.block_end();
+                    writer.block_end();
+                }
+
                 if (runtime::cpu::IsTracingEnabled() &&
                     current_function->get_name() == m_function_name)
                 {
@@ -1007,6 +1114,9 @@ using namespace ngraph::runtime;
                     writer << "});\n";
                 }
             }
+
+
+            ///// End Kernel emission
         }
 
         if (m_use_tbb)

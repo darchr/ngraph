@@ -2758,7 +2758,7 @@ namespace ngraph
             template<>
             void CPU_Emitter::EMITTER_DECL(ngraph::op::Move)
             {
-                // Select kernel based on stransfer size. Small transfers should just use
+                // Select kernel based on transfer size. Small transfers should just use
                 // memcpy
                 //
                 // The size limit is just a heuristic right now. And by "heuristic" I mean
@@ -2814,9 +2814,12 @@ namespace ngraph
                     // total array
                     if (out[0].get_tensor()->get_pool_number() == 1)
                     {
-                        size_t chunk_size = num_elements / 4;
-                        writer << "#pragma omp parallel for schedule(static, " 
-                               << chunk_size << ")\n";
+                        //size_t chunk_size = num_elements / 4;
+                        //writer << "#pragma omp parallel for schedule(static, " 
+                        //       << chunk_size << ")\n";
+                        
+                        // 4 threads is optimal for writing
+                        writer << "#pragma omp parallel for num_threads(4)\n";
                     } else {
                         writer << "#pragma omp parallel for\n";
                     }
@@ -2829,6 +2832,15 @@ namespace ngraph
                 }
 
                 return;
+            }
+
+            template<>
+            void CPU_Emitter::EMITTER_DECL(ngraph::op::MoveAsync)
+            {
+                // Async moves are emitter
+                writer.block_begin();
+                writer << "// Skipping generation of MoveAsync\n";
+                writer.block_end();
             }
 
             template <>
@@ -2922,6 +2934,7 @@ namespace ngraph
                     writer.block_end();
                 }
             }
+
 
             template <>
             void CPU_Emitter::EMITTER_DECL(ngraph::op::AvgPool)
