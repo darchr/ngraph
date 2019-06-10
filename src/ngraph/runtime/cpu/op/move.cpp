@@ -40,13 +40,13 @@ shared_ptr<Node> op::MoveAsync::copy_with_new_args(const NodeVector& new_args) c
         throw ngraph_error("Incorrect number of new arguments");
     }
 
-    return make_shared<MoveAsync>(new_args.at(0), m_n, m_across_name);
+    return make_shared<MoveAsync>(new_args.at(0), m_n, m_across);
 }
 
-op::MoveAsync::MoveAsync(const shared_ptr<Node>& input, size_t n, const std::string across)
+op::MoveAsync::MoveAsync(const shared_ptr<Node>& input, size_t n, const shared_ptr<Node>& across)
     : Op("MoveAsync", {input})
     , m_n{n}
-    , m_across_name{across}
+    , m_across{across}
 {
     constructor_validate_and_infer_types();
 
@@ -59,4 +59,7 @@ op::MoveAsync::MoveAsync(const shared_ptr<Node>& input, size_t n, const std::str
     // Need to manually assign the correct output form the input
     m_inputs.clear();
     m_inputs.emplace_back(this, 0, input->get_outputs().at(m_n));
+
+    // Add the `across` node as a control dependency for scheduling purposes.
+    add_control_dependency(across);
 }

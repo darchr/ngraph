@@ -34,7 +34,7 @@ namespace ngraph
             CPU_BACKEND_API MoveAsync(
                     const std::shared_ptr<Node>& input, 
                     size_t n,
-                    const std::string across
+                    const std::shared_ptr<Node>& across
             );
 
             virtual std::shared_ptr<Node>
@@ -42,7 +42,7 @@ namespace ngraph
 
             size_t get_n() const { return m_n; }
 
-            const std::string& get_fellow() { return m_across_name; }
+            const std::shared_ptr<Node>& get_fellow() { return m_across; }
 
             // TODO: Maybe implement this
             //
@@ -54,7 +54,7 @@ namespace ngraph
         protected:
             size_t m_n;
             // The node to move in parallel with
-            const std::string m_across_name;
+            const std::shared_ptr<Node> m_across;
         };
     }
 }
