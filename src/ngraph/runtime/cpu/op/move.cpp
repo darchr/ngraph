@@ -59,7 +59,4 @@ op::MoveAsync::MoveAsync(const shared_ptr<Node>& input, size_t n, const shared_p
     // Need to manually assign the correct output form the input
     m_inputs.clear();
     m_inputs.emplace_back(this, 0, input->get_outputs().at(m_n));
-
-    // Add the `across` node as a control dependency for scheduling purposes.
-    add_control_dependency(across);
 }

@@ -892,30 +892,6 @@ using namespace ngraph::runtime;
             ///// Begin Kernel Emission
             /////
 
-            // Emit operation prologue
-            if (!node->is_parameter() && !node->is_constant())
-            {
-                if (current_function->get_name() == m_function_name)
-                {
-                    m_op_attrs.emplace_back(
-                        node->get_name(), node_output_names, node_input_names);
-                }
-                if (m_use_tbb)
-                {
-                    writer << "tbb::flow::continue_node<tbb::flow::continue_msg>* "
-                              "flowgraph_node_"
-                           << node->get_name()
-                           << " = new tbb::flow::continue_node<tbb::flow::continue_msg> "
-                              "(*(cg_ctx->tbb_graph), [&](const tbb::flow::continue_msg &msg)\n{\n";
-                    writer.indent++;
-                }
-                if (runtime::cpu::IsTracingEnabled() &&
-                    current_function->get_name() == m_function_name)
-                {
-                    writer << "start_ts = cpu::Clock::now();\n";
-                }
-            }
-
             // Strategy for overlapping communication
             //
             // 1. Wrap the whole block in a #pragma omp parallel block
@@ -992,7 +968,7 @@ using namespace ngraph::runtime;
                     writer << "__m512i x = _mm512_stream_load_si512(&src[i]);\n";
                     writer << "_mm512_stream_si512(&dst[i], x);\n";
                     writer.block_end();
-                
+
                     //writer  << "memcpy(" << _output_names[i] << ", " <<
                     //        _input_names[i] << ", " <<
                     //        _copy_sizes[i] << ");\n";
@@ -1002,6 +978,31 @@ using namespace ngraph::runtime;
                 writer.block_begin();
                 //writer << "std::cout << \"Executing Body\" << std::endl;\n";
             }
+
+            // Emit operation prologue
+            if (!node->is_parameter() && !node->is_constant())
+            {
+                if (current_function->get_name() == m_function_name)
+                {
+                    m_op_attrs.emplace_back(
+                        node->get_name(), node_output_names, node_input_names);
+                }
+                if (m_use_tbb)
+                {
+                    writer << "tbb::flow::continue_node<tbb::flow::continue_msg>* "
+                              "flowgraph_node_"
+                           << node->get_name()
+                           << " = new tbb::flow::continue_node<tbb::flow::continue_msg> "
+                              "(*(cg_ctx->tbb_graph), [&](const tbb::flow::continue_msg &msg)\n{\n";
+                    writer.indent++;
+                }
+                if (runtime::cpu::IsTracingEnabled() &&
+                    current_function->get_name() == m_function_name)
+                {
+                    writer << "start_ts = cpu::Clock::now();\n";
+                }
+            }
+
 
             if (!node->is_parameter() && !node->is_constant())
             {
@@ -1112,6 +1113,14 @@ using namespace ngraph::runtime;
                 writer << "}\n";
                 emit_debug_function_exit(writer, node.get(), in, out);
 
+                if (runtime::cpu::IsTracingEnabled() &&
+                    current_function->get_name() == m_function_name)
+                {
+                    writer << "ctx->op_durations[profiler_count++] = "
+                           << "(std::chrono::duration_cast<cpu::Timescale>(cpu::Clock::now() - "
+                              "start_ts)).count();\n";
+                }
+
                 // End the overlapping communications
                 if (overlap_communication)
                 {
@@ -1121,13 +1130,6 @@ using namespace ngraph::runtime;
                     //writer << "omp_set_nested(0); omp_set_max_active_levels(1);\n";
                 }
 
-                if (runtime::cpu::IsTracingEnabled() &&
-                    current_function->get_name() == m_function_name)
-                {
-                    writer << "ctx->op_durations[profiler_count++] = "
-                           << "(std::chrono::duration_cast<cpu::Timescale>(cpu::Clock::now() - "
-                              "start_ts)).count();\n";
-                }
                 if (m_use_tbb)
                 {
                     writer.indent--;

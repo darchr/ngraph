@@ -126,10 +126,20 @@ namespace ngraph
             }
         }
 
+        // for (auto a = node_dependency_count.begin() ; a != node_dependency_count.end(); a++ )
+        // {
+        //     auto _node = a->first;
+        //     size_t count = a->second;
+        //     if (count != 0)
+        //     {
+        //         std::cout << "Dangling Node: " << _node->get_name() << std::endl;
+        //     }
+        // }
+
         NGRAPH_ASSERT(nodes.size() == result_list.size());
 
         // Secondary pass to handle associations.
-        // 
+        //
         // This is definitely not optimized, but ... should work. Besides, it's a
         // compiler right? Who cares if its fast for now.
         //
@@ -139,7 +149,7 @@ namespace ngraph
         //
         // Also, use the normal for loop because we need the actual list iterator when
         // using `std::list::splice`
-        std::unordered_set<std::string> handled_nodes; 
+        std::unordered_set<std::string> handled_nodes;
         bool modified = true;
         while (modified)
         {
@@ -153,27 +163,27 @@ namespace ngraph
                 if (handled_nodes.find(node->get_name()) != handled_nodes.end())
                 {
                     continue;
-                }  
+                }
 
                 if (node->get_affinity() != AFFINITY_NONE)
                 {
                     modified = true;
 
                     // Find its associated node.
-                    std::vector<std::string> associates = node->get_associates(); 
+                    std::vector<std::string> associates = node->get_associates();
                     auto predicate = [&](std::shared_ptr<Node> n){
-                        return std::find(associates.begin(), associates.end(), n->get_name()) 
+                        return std::find(associates.begin(), associates.end(), n->get_name())
                             != associates.end();
                     };
 
                     auto pos = std::find_if(result_list.begin(), result_list.end(), predicate);
-                    NGRAPH_ASSERT(pos != result_list.end()); 
+                    NGRAPH_ASSERT(pos != result_list.end());
 
                     // Splice this node to just after the found node.
                     if (node->get_affinity() == AFFINITY_INPUT)
                     {
                         pos++;
-                    } 
+                    }
                     result_list.splice(pos, result_list, it);
 
                     //std::cout << "C++: Applying Node Affinity: "
