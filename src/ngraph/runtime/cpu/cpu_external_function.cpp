@@ -973,6 +973,7 @@ using namespace ngraph::runtime;
                     //        _input_names[i] << ", " <<
                     //        _copy_sizes[i] << ");\n";
                 }
+                writer << "_mm_sfence();\n";
                 writer.block_end();
                 writer << "#pragma omp section\n";
                 writer.block_begin();

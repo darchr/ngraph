@@ -2828,6 +2828,7 @@ namespace ngraph
                     writer << "__m512i x = _mm512_stream_load_si512(&src[i]);\n";
                     writer << "_mm512_stream_si512(&dst[i], x);\n";
                     writer.block_end();
+                    writer << "_mm_sfence();\n";
                     writer.block_end();
                 }
 

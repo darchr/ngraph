@@ -22,7 +22,15 @@ op::Move::Move(const shared_ptr<Node>& input, size_t n)
 {
     constructor_validate_and_infer_types();
 
+    // Manually setup out output
     set_output_type(0, get_input_element_type(m_n), get_input_partial_shape(m_n));
+
+    // Clear this node as a dependency for the other outputs of the source
+    int i = 0;
+    for (descriptor::Output& output: input->get_outputs())
+    {
+        output.remove_input(&m_inputs.at(i++));
+    }
 
     // Manually assign layouts since this node is usually inserted after compilation
     auto tv = input->get_output_tensor_ptr(m_n);
@@ -50,7 +58,15 @@ op::MoveAsync::MoveAsync(const shared_ptr<Node>& input, size_t n, const shared_p
 {
     constructor_validate_and_infer_types();
 
+    // Manually setup out output
     set_output_type(0, get_input_element_type(m_n), get_input_partial_shape(m_n));
+
+    // Clear this node as a dependency for the other outputs of the source
+    int i = 0;
+    for (descriptor::Output& output: input->get_outputs())
+    {
+        output.remove_input(&m_inputs.at(i++));
+    }
 
     // Manually assign layouts since this node is usually inserted after compilation
     auto tv = input->get_output_tensor_ptr(m_n);

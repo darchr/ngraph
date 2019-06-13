@@ -96,11 +96,14 @@ namespace ngraph
             result_list.push_back(node_map[independent_node]);
             independent_nodes.pop_front();
 
+            //std::cout << "Processing Node: " << independent_node->get_name() << ": " << independent_node << std::endl;
+
             for (auto& output : independent_node->get_outputs())
             {
                 for (auto& input : output.get_inputs())
                 {
                     auto user = input->get_raw_pointer_node();
+                    //std::cout << "    User: " << user->get_name() << ": " << user << std::endl;
                     node_dependency_count[user] -= 1;
                     size_t count = node_dependency_count[user];
                     if (count == 0)
@@ -116,6 +119,7 @@ namespace ngraph
                 if (cdit != control_deps_users.end())
                     for (auto cd_user : cdit->second)
                     {
+                        //std::cout << "    Control Dep: " << cd_user->get_name() << ": " << cd_user << std::endl;
                         node_dependency_count[cd_user] -= 1;
                         size_t count = node_dependency_count[cd_user];
                         if (count == 0)
@@ -125,6 +129,22 @@ namespace ngraph
                     }
             }
         }
+
+        //std::cout << "Pre-Affinity Node List" << std::endl;
+        for (auto a: result_list)
+        {
+            //std::cout << a->get_name() << ": " << a << std::endl;
+            auto control_deps = a->get_control_dependencies();
+            if (!control_deps.empty())
+            {
+                //std::cout << "    Control Dependencies" << std::endl;
+                for (auto cd: control_deps)
+                {
+                    //std::cout << "        " << cd->get_name() << ": " << cd << std::endl;
+                }
+            }
+        }
+        //std::cout << "Done Pre-Affinity Node List" << std::endl;
 
         // for (auto a = node_dependency_count.begin() ; a != node_dependency_count.end(); a++ )
         // {
