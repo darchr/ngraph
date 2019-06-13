@@ -508,6 +508,8 @@ void runtime::cpu::CPU_ExternalFunction::compile(ngraph::pass::PassConfig& pass_
         R"(
 #include <cmath>
 #include <immintrin.h>
+#include <thread>
+#include <sched.h>
 #include "ngraph/except.hpp"
 #include "ngraph/runtime/aligned_buffer.hpp"
 #include "ngraph/runtime/cpu/cpu_eigen_utils.hpp"
@@ -727,6 +729,59 @@ using namespace ngraph::runtime;
             m_pmem_buffer_size = current_function->get_pmem_pool_size();
         }
 
+        // Find asynchronous overlaps
+        bool has_async = false;
+        std::map<std::string, std::vector<shared_ptr<Node>>> async_map;
+        for (shared_ptr<Node> node : ordered_ops)
+        {
+            // If we find an asynchronous node
+            if (auto n = std::dynamic_pointer_cast<ngraph::op::MoveAsync>(node))
+            {
+                std::cout << "Found Async Move Node: " << n->get_name() << std::endl;
+                has_async = true;
+
+                shared_ptr<Node> fellow = n->get_fellow();
+                std::cout << "Moving Across: " << fellow->get_name() << std::endl;
+                // Look to see if we have already found this fellow.
+                // If so, get the vector that it maps to and add this mode node there.
+                // Otherwise, create the vector.
+                auto handle = async_map.find(fellow->get_name());
+                if (handle == async_map.end())
+                {
+                    std::vector<shared_ptr<Node>> v{node};
+                    async_map[fellow->get_name()] = v;
+                } else {
+                    async_map[fellow->get_name()].push_back(node);
+                }
+            }
+        }
+
+        // Emite Async handler function if needed
+        if (has_async)
+        {
+            writer +=
+                R"(
+static void async_move(
+        std::vector<__m512i*>& sources, 
+        std::vector<__m512i*>& dests, 
+        std::vector<uint64_t>& sizes)
+    {
+    for (size_t j = 0; j < sources.size(); j++)
+    {
+        __m512i* src = sources[j];
+        __m512i* dst = dests[j];
+
+        for (size_t i = 0; i < sizes[j]; i++)
+        {
+            __m512i x = _mm512_stream_load_si512(&src[i]);
+            _mm512_stream_si512(&dst[i], x);
+        }
+    }
+    _mm_sfence();
+}
+)";
+        }
+
         writer << "bool " << current_function->get_name() << "_t_en[" << tensor_index << "];\n";
 
         writer << "extern \"C\" void " << current_function->get_name() << func_params << "\n";
@@ -753,6 +808,18 @@ using namespace ngraph::runtime;
         }
 
         writer << "bool* t_en = (bool*)" << current_function->get_name() << "_t_en;\n";
+
+        if (has_async)
+        {
+            writer << "\n";
+            writer << "std::vector<__m512i*> sources;\n";
+            writer << "std::vector<__m512i*> dests;\n";
+            writer << "std::vector<uint64_t> sizes;\n";
+            writer << "std::thread worker_thread;\n";
+            writer << "cpu_set_t cpuset;\n";
+            writer << "CPU_ZERO(&cpuset);\n";
+            writer << "CPU_SET(72, &cpuset);\n";
+        }
 
         if (m_use_tbb)
         {
@@ -836,31 +903,6 @@ using namespace ngraph::runtime;
             }
         }
 
-        // Find asynchronous overlaps
-        std::map<std::string, std::vector<shared_ptr<Node>>> async_map;
-        for (shared_ptr<Node> node : ordered_ops)
-        {
-            // If we find an asynchronous node
-            if (auto n = std::dynamic_pointer_cast<ngraph::op::MoveAsync>(node))
-            {
-                std::cout << "Found Async Move Node: " << n->get_name() << std::endl;
-
-                shared_ptr<Node> fellow = n->get_fellow();
-                std::cout << "Moving Across: " << fellow->get_name() << std::endl;
-                // Look to see if we have already found this fellow.
-                // If so, get the vector that it maps to and add this mode node there.
-                // Otherwise, create the vector.
-                auto handle = async_map.find(fellow->get_name());
-                if (handle == async_map.end())
-                {
-                    std::vector<shared_ptr<Node>> v{node};
-                    async_map[fellow->get_name()] = v;
-                } else {
-                    async_map[fellow->get_name()].push_back(node);
-                }
-            }
-        }
-
         for (shared_ptr<Node> node : ordered_ops)
         {
             auto& n = *node; // Work around a compiler warning (*node inside typeid may have effects
@@ -900,85 +942,6 @@ using namespace ngraph::runtime;
             // 4. With OMP_NESTED=true, the second thread should spawn the necessary number
             //    of threads when it reaches the kernel implementation ... hopefully
 
-            // Check to see if there are overlapping communications
-            auto handle = async_map.find(node->get_name());
-            bool overlap_communication = (handle != async_map.end());
-            if (overlap_communication)
-            {
-                std::vector<shared_ptr<Node>> overlaps = async_map[node->get_name()];
-                std::cout << "Emitting " << overlaps.size() << " async moves across "
-                          << node->get_name() << std::endl;
-
-                // We have to queue up a set of copies based on the inputs and outputs of
-                // the queued nodes.
-                vector<string> _input_names;
-                vector<string> _output_names;
-                vector<uint64_t> _copy_sizes;
-                for (shared_ptr<Node> __node : overlaps)
-                {
-                    // These should all be AsyncMove nodes and thus should have only one
-                    // input and output
-                    for (const descriptor::Input& input : __node->get_inputs())
-                    {
-                        const descriptor::Output& output = input.get_output();
-                        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-                        _input_names.emplace_back(m_variable_name_map[tv->get_name()]);
-                        _copy_sizes.push_back(tv->size());
-                    }
-                    for (const descriptor::Output& output : __node->get_outputs())
-                    {
-                        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-                        _output_names.emplace_back(m_variable_name_map[tv->get_name()]);
-                    }
-                }
-
-                // Print out what we've found
-                std::cout << "Showing AsyncMoves" << std::endl;
-                for (int64_t i = 0; i < _input_names.size(); i++)
-                {
-                    std::cout << "input: " << _input_names[i] << std::endl
-                              << "output: " << _output_names[i] << std::endl
-                              << "size: " << _copy_sizes[i] << std::endl;
-                }
-
-                // Emit memcpy's with reckless abandon!!
-                // Turn on nesting for the outermost level
-                //writer << "omp_set_nested(1); omp_set_max_active_levels(2);\n";
-                writer << "omp_set_nested(1);\n";
-                writer << "#pragma omp parallel sections num_threads(2)\n";
-                writer.block_begin();
-                writer << "#pragma omp section\n";
-                writer.block_begin();
-                writer << "__m512i* src;\n";
-                writer << "__m512i* dst;\n";
-                //writer << "std::cout << \"Executing Copies\" << std::endl;\n";
-                for (int64_t i = 0; i < _input_names.size(); i++)
-                {
-                    writer << "src = reinterpret_cast<__m512i*>("
-                           << _input_names[i] << ");\n";
-
-                    writer << "dst = reinterpret_cast<__m512i*>("
-                           << _output_names[i] << ");\n";
-
-                    size_t array_bytes = _copy_sizes[i];
-                    size_t num_elements = (array_bytes + 64 - 1) / 64;
-
-                    writer << "for (size_t i = 0; i < " << num_elements << "; i++)\n";
-                    writer.block_begin();
-                    writer << "__m512i x = _mm512_stream_load_si512(&src[i]);\n";
-                    writer << "_mm512_stream_si512(&dst[i], x);\n";
-                    writer.block_end();
-
-                    //writer  << "memcpy(" << _output_names[i] << ", " <<
-                    //        _input_names[i] << ", " <<
-                    //        _copy_sizes[i] << ");\n";
-                }
-                writer << "_mm_sfence();\n";
-                writer.block_end();
-                writer << "#pragma omp section\n";
-                writer.block_begin();
-                //writer << "std::cout << \"Executing Body\" << std::endl;\n";
-            }
 
             // Emit operation prologue
             if (!node->is_parameter() && !node->is_constant())
@@ -1013,7 +976,7 @@ using namespace ngraph::runtime;
                     parameter_nodes.end(), node_output_names.begin(), node_output_names.end());
                 writer << join(parameter_nodes);
                 writer << ")\n";
-                // Printf debugging FTW!
+                // printf debugging FTW!
                 //writer << "std::cout << \"Executing: " << node->get_name() << "\\n\";\n";
             }
 
@@ -1021,6 +984,81 @@ using namespace ngraph::runtime;
             if (!node->is_parameter() && !node->is_constant())
             {
                 emit_debug_function_entry(writer, node.get(), in, out);
+            }
+
+            // Check to see if there are overlapping communications
+            auto handle = async_map.find(node->get_name());
+            bool overlap_communication = (handle != async_map.end());
+            if (overlap_communication)
+            {
+                std::vector<shared_ptr<Node>> overlaps = async_map[node->get_name()];
+                std::cout << "Emitting " << overlaps.size() << " async moves across "
+                          << node->get_name() << std::endl;
+
+                // We have to queue up a set of copies based on the inputs and outputs of
+                // the queued nodes.
+                vector<string> _input_names;
+                vector<string> _output_names;
+                vector<uint64_t> _copy_sizes;
+                for (shared_ptr<Node> __node : overlaps)
+                {
+                    // These should all be AsyncMove nodes and thus should have only one
+                    // input and output
+                    for (const descriptor::Input& input : __node->get_inputs())
+                    {
+                        const descriptor::Output& output = input.get_output();
+                        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+                        _input_names.emplace_back(m_variable_name_map[tv->get_name()]);
+
+                        // Convert copy sizes to m512i sizes
+                        // each m512i has 64 bytes
+                        // (array_bytes + 64 - 1) / 64
+                        _copy_sizes.push_back((tv->size() + 64 - 1) / 64);
+                    }
+                    for (const descriptor::Output& output : __node->get_outputs())
+                    {
+                        shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+                        _output_names.emplace_back(m_variable_name_map[tv->get_name()]);
+                    }
+                }
+
+                // Print out what we've found
+                std::cout << "Showing AsyncMoves" << std::endl;
+                for (int64_t i = 0; i < _input_names.size(); i++)
+                {
+                    std::cout << "input: " << _input_names[i] << std::endl
+                              << "output: " << _output_names[i] << std::endl
+                              << "size: " << _copy_sizes[i] << std::endl;
+                }
+
+                // Emit sources
+                std::cout << "Emitting Sources" << std::endl;
+                writer << "sources.empty();\n";
+                for (auto _name: _input_names)
+                {
+                    writer << "sources.push_back(reinterpret_cast<__m512i*>(" << _name << "));\n";
+                }
+
+                // Emit dests
+                std::cout << "Emitting Destinations" << std::endl;
+                writer << "dests.empty();\n";
+                for (auto _name: _output_names)
+                {
+                    writer << "dests.push_back(reinterpret_cast<__m512i*>(" << _name << "));\n";
+                }
+
+                // Emit sizes
+                std::cout << "Emitting Sizes" << std::endl;
+                writer << "sizes.empty();\n";
+                for (auto sz: _copy_sizes)
+                {
+                    writer << "sizes.push_back(" << sz << ");\n";
+                }
+
+                // Do the threaded call
+                std::cout << "Emitting Function Call" << std::endl;
+                writer << "worker_thread = std::thread(async_move, std::ref(sources), std::ref(dests), std::ref(sizes));\n";
+                writer << "pthread_setaffinity_np(worker_thread.native_handle(), sizeof(cpu_set_t), &cpuset);\n";
             }
 
             // Op Control
@@ -1122,14 +1160,20 @@ using namespace ngraph::runtime;
                               "start_ts)).count();\n";
                 }
 
-                // End the overlapping communications
                 if (overlap_communication)
                 {
-                    writer.block_end();
-                    writer.block_end();
-                    writer << "omp_set_nested(0);\n";
-                    //writer << "omp_set_nested(0); omp_set_max_active_levels(1);\n";
+                    writer << "worker_thread.join();\n";
                 }
+
+
+                // // End the overlapping communications
+                // if (overlap_communication)
+                // {
+                //     writer.block_end();
+                //     writer.block_end();
+                //     writer << "omp_set_nested(0);\n";
+                //     //writer << "omp_set_nested(0); omp_set_max_active_levels(1);\n";
+                // }
 
                 if (m_use_tbb)
                 {
