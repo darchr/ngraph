@@ -18,6 +18,7 @@
 
 #include <cstring>
 #include <sstream>
+#include <numeric>
 
 #include "ngraph/log.hpp"
 #include "ngraph/node.hpp"
@@ -44,8 +45,8 @@ namespace ngraph
                 : Node("Constant", {})
                 , m_element_type(type)
                 , m_shape(shape)
-                , m_data(ngraph::aligned_alloc(m_element_type.size(),
-                                               shape_size(m_shape) * m_element_type.size()))
+                , m_data(ngraph::aligned_alloc(ngraph::round_up(m_element_type.size(), 64),
+                                               ngraph::round_up(shape_size(m_shape) * m_element_type.size(), 64)))
             {
                 NODE_VALIDATION_ASSERT(this,
                                        values.size() == 1 || values.size() == shape_size(m_shape))
@@ -100,7 +101,11 @@ namespace ngraph
                 , m_data(nullptr)
             {
                 size_t size = shape_size(m_shape) * m_element_type.size();
-                m_data = ngraph::aligned_alloc(m_element_type.size(), size);
+                m_data = ngraph::aligned_alloc(
+                    ngraph::round_up(m_element_type.size(), 64),
+                    ngraph::round_up(size, 64)
+                );
+
                 std::memcpy(m_data, data, size);
                 constructor_validate_and_infer_types();
             }

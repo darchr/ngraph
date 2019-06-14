@@ -838,15 +838,16 @@ using namespace ngraph::runtime;
 
         // Find asynchronous overlaps
         std::map<std::string, std::vector<shared_ptr<Node>>> async_map;
+        int64_t num_async_moves = 0;
         for (shared_ptr<Node> node : ordered_ops)
         {
             // If we find an asynchronous node
             if (auto n = std::dynamic_pointer_cast<ngraph::op::MoveAsync>(node))
             {
-                std::cout << "Found Async Move Node: " << n->get_name() << std::endl;
-
+                //std::cout << "Found Async Move Node: " << n->get_name() << std::endl;
+                num_async_moves += 1;
                 shared_ptr<Node> fellow = n->get_fellow();
-                std::cout << "Moving Across: " << fellow->get_name() << std::endl;
+                //std::cout << "Moving Across: " << fellow->get_name() << std::endl;
                 // Look to see if we have already found this fellow.
                 // If so, get the vector that it maps to and add this mode node there.
                 // Otherwise, create the vector.
@@ -859,6 +860,15 @@ using namespace ngraph::runtime;
                     async_map[fellow->get_name()].push_back(node);
                 }
             }
+        }
+
+        // Insert timing control for async moves
+        std::map<std::string, int64_t> async_timing_map;
+        int64_t async_timing_count = 0;
+        if (runtime::cpu::IsTracingEnabled() && current_function->get_name() == m_function_name)
+        {
+            writer << "int64_t async_move_times [" << num_async_moves << "];\n";
+            writer << "cpu::Timestamp async_start_ts;\n";
         }
 
         for (shared_ptr<Node> node : ordered_ops)
@@ -906,14 +916,15 @@ using namespace ngraph::runtime;
             if (overlap_communication)
             {
                 std::vector<shared_ptr<Node>> overlaps = async_map[node->get_name()];
-                std::cout << "Emitting " << overlaps.size() << " async moves across "
-                          << node->get_name() << std::endl;
+                //std::cout << "Emitting " << overlaps.size() << " async moves across "
+                //          << node->get_name() << std::endl;
 
                 // We have to queue up a set of copies based on the inputs and outputs of
                 // the queued nodes.
                 vector<string> _input_names;
                 vector<string> _output_names;
                 vector<uint64_t> _copy_sizes;
+
                 for (shared_ptr<Node> __node : overlaps)
                 {
                     // These should all be AsyncMove nodes and thus should have only one
@@ -932,18 +943,6 @@ using namespace ngraph::runtime;
                     }
                 }
 
-                // Print out what we've found
-                std::cout << "Showing AsyncMoves" << std::endl;
-                for (int64_t i = 0; i < _input_names.size(); i++)
-                {
-                    std::cout << "input: " << _input_names[i] << std::endl
-                              << "output: " << _output_names[i] << std::endl
-                              << "size: " << _copy_sizes[i] << std::endl;
-                }
-
-                // Emit memcpy's with reckless abandon!!
-                // Turn on nesting for the outermost level
-                //writer << "omp_set_nested(1); omp_set_max_active_levels(2);\n";
                 writer << "omp_set_nested(1);\n";
                 writer << "#pragma omp parallel sections num_threads(2)\n";
                 writer.block_begin();
@@ -951,9 +950,13 @@ using namespace ngraph::runtime;
                 writer.block_begin();
                 writer << "__m512i* src;\n";
                 writer << "__m512i* dst;\n";
-                //writer << "std::cout << \"Executing Copies\" << std::endl;\n";
+
                 for (int64_t i = 0; i < _input_names.size(); i++)
                 {
+                    // Time how long this transfer takes
+                    writer << "async_start_ts = cpu::Clock::now();\n";
+
+                    // Emit body of copy
                     writer << "src = reinterpret_cast<__m512i*>("
                            << _input_names[i] << ");\n";
 
@@ -963,21 +966,28 @@ using namespace ngraph::runtime;
                     size_t array_bytes = _copy_sizes[i];
                     size_t num_elements = (array_bytes + 64 - 1) / 64;
 
-                    writer << "for (size_t i = 0; i < " << num_elements << "; i++)\n";
-                    writer.block_begin();
-                    writer << "__m512i x = _mm512_stream_load_si512(&src[i]);\n";
-                    writer << "_mm512_stream_si512(&dst[i], x);\n";
-                    writer.block_end();
+                    if (array_bytes < 64)
+                    {
+                        writer << "memcpy(" << _output_names[i] << ", " << _input_names[i] << ", " << array_bytes << ");\n";
+                    } else {
+                        writer << "for (size_t i = 0; i < " << num_elements << "; i++)\n";
+                        writer.block_begin();
+                        writer << "__m512i x = _mm512_stream_load_si512(&src[i]);\n";
+                        writer << "_mm512_stream_si512(&dst[i], x);\n";
+                        writer.block_end();
+                    }
 
-                    //writer  << "memcpy(" << _output_names[i] << ", " <<
-                    //        _input_names[i] << ", " <<
-                    //        _copy_sizes[i] << ");\n";
+                    // Save the node name to the timing map so we can reconstruct the time
+                    // the copy actually took.
+                    async_timing_map[overlaps[i]->get_name()] = async_timing_count;
+                    writer << "async_move_times[" << async_timing_count++ << "] = " 
+                           << "(std::chrono::duration_cast<cpu::Timescale>(cpu::Clock::now() "
+                           << "- async_start_ts)).count();\n";
                 }
                 writer << "_mm_sfence();\n";
                 writer.block_end();
                 writer << "#pragma omp section\n";
                 writer.block_begin();
-                //writer << "std::cout << \"Executing Body\" << std::endl;\n";
             }
 
             // Emit operation prologue
@@ -1013,7 +1023,7 @@ using namespace ngraph::runtime;
                     parameter_nodes.end(), node_output_names.begin(), node_output_names.end());
                 writer << join(parameter_nodes);
                 writer << ")\n";
-                // Printf debugging FTW!
+                // printf debugging FTW!
                 //writer << "std::cout << \"Executing: " << node->get_name() << "\\n\";\n";
             }
 
@@ -1117,9 +1127,16 @@ using namespace ngraph::runtime;
                 if (runtime::cpu::IsTracingEnabled() &&
                     current_function->get_name() == m_function_name)
                 {
-                    writer << "ctx->op_durations[profiler_count++] = "
-                           << "(std::chrono::duration_cast<cpu::Timescale>(cpu::Clock::now() - "
+                    writer << "ctx->op_durations[profiler_count++] = ";
+                    // If this is an async move, refer to the past timings
+                    auto async_map_it = async_timing_map.find(node->get_name());
+                    if (async_map_it == async_timing_map.end())
+                    {
+                        writer << "(std::chrono::duration_cast<cpu::Timescale>(cpu::Clock::now() - "
                               "start_ts)).count();\n";
+                    } else {
+                        writer << "async_move_times[" << async_map_it->second << "];\n";
+                    }
                 }
 
                 // End the overlapping communications
