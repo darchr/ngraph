@@ -534,7 +534,7 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
                                     NGRAPH_DEBUG << "cpu_memory_assignment: no in place "
                                                     "due to pmem/dram invalidation";
                                     no_in_place = true;
-                                } 
+                                }
 
                                 if (!no_in_place)
                                 {
@@ -700,7 +700,15 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                             // to PMEM.
                             if (tv->get_pool_number() == static_cast<size_t>(runtime::cpu::MemoryLocation::DRAM))
                             {
-                                m_tensor_caching.insert(tv.get());
+                                // TODO: Turning off caching because its messing things up.
+                                //
+                                // Placing cached tensors at the top of the cache makes
+                                // defragmenting during memory optimization very hard.
+                                //
+                                // The fix here is to cache tensors at the bottom of the
+                                // heap, but I'm just disabling this for now.
+
+                                //m_tensor_caching.insert(tv.get());
                             }
                         }
                     }
@@ -728,7 +736,7 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                 {
                     // This should be good to insert now, but I'm adding things incrementally.
                     continue;
-    
+
                     auto output_tensor = &node->get_outputs().at(oi_pair.output).get_tensor();
                     auto input_tensor = &node->get_inputs().at(oi_pair.input).get_tensor();
                     auto input_node = node->get_inputs().at(oi_pair.input).get_output().get_node();
@@ -767,7 +775,7 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                             NGRAPH_DEBUG << "cpu_memory_assignment: different tensor pools"
                                             "no destructive oi";
                             continue;
-                        } 
+                        }
 
                         auto input_bufferID = get_bufferID(input_tensor);
                         auto output_bufferID = get_bufferID(output_tensor);
@@ -926,16 +934,16 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
         }
     }
 
-    //std::cout << "cpu_memory_assignemnt: max allocated for mm is " 
+    //std::cout << "cpu_memory_assignemnt: max allocated for mm is "
     //          << mm.max_allocated() << std::endl;
 
-    //std::cout << "cpu_memory_assignment: max allocated for mm_caching is " 
+    //std::cout << "cpu_memory_assignment: max allocated for mm_caching is "
     //          << mm_caching.max_allocated() << std::endl;
 
-    //std::cout << "cpu_memory_assignment: max allocated in total is " 
+    //std::cout << "cpu_memory_assignment: max allocated in total is "
     //          << mm.max_allocated() + mm_caching.max_allocated() << std::endl;
 
-    //std::cout << "cpu_memory_assignment: max allocated for mm_persistent is " 
+    //std::cout << "cpu_memory_assignment: max allocated for mm_persistent is "
     //          << mm_persistent.max_allocated() << std::endl;
 
     NGRAPH_DEBUG << "cpu_memory_assignemnt: max allocated for mm is " << mm.max_allocated();
@@ -949,7 +957,7 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
     NGRAPH_DEBUG << "cpu_memory_assignment: max allocated for mm_persistent is "
                  << mm_persistent.max_allocated();
     function->set_temporary_pool_size(
-            mm.max_allocated() 
+            mm.max_allocated()
             + mm_caching.max_allocated()
         );
     function->set_pmem_pool_size(mm_persistent.max_allocated());
