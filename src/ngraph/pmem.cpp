@@ -5,11 +5,9 @@
 #include <string>
 #include <stdio.h>
 
-// ngraph/pmemobj stuff
 #include "pmem.hpp"
 #include "libpmem.h"
 #include "ngraph/util.hpp"
-//#include "libpmemobj.h"
 #include "ngraph/log.hpp"
 
 using namespace ngraph;

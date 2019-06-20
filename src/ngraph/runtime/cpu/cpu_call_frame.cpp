@@ -149,6 +149,7 @@ void runtime::cpu::CPU_CallFrame::setup_runtime_context()
     }
 
     // Allocate PMEM Pool
+#ifdef NGRAPH_PMDK_ENABLE
     if (m_external_function->get_pmem_buffer_size() > 0)
     {
         ctx->persistent_buffer = new AlignedBuffer(
@@ -158,6 +159,7 @@ void runtime::cpu::CPU_CallFrame::setup_runtime_context()
                 pmem::pmem_free
             );
     }
+#endif
 
     const auto& mkldnn_emitter = m_external_function->get_mkldnn_emitter();
     ctx->mkldnn_primitives = mkldnn_emitter->get_mkldnn_primitives().data();

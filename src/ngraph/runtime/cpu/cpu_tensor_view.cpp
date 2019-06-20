@@ -62,7 +62,11 @@ runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_
         void* ptr;
         if (persistent)
         {
+#ifdef NGRAPH_PMDK_ENABLE
             ptr = pmem::pmem_malloc(allocation_size);
+#else
+            ptr = ngraph_malloc(allocation_size);
+#endif
         } else {
             ptr = ngraph_malloc(allocation_size);
         }            
@@ -92,12 +96,16 @@ runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_
 
 runtime::cpu::CPUTensorView::~CPUTensorView()
 {
+#ifdef NGRAPH_PMDK_ENABLE
     if (pmem::is_persistent_ptr(buffer))
     {
         pmem::pmem_free(buffer);
     } else {
         ngraph_free(buffer);
     }
+#else
+    ngraph_free(buffer);
+#endif
 }
 
 char* runtime::cpu::CPUTensorView::get_data_ptr()

@@ -63,7 +63,8 @@ set(CUDA_SRC
     )
 
 if (NGRAPH_GPU_ENABLE)
-    find_package(CUDA 9 QUIET)
+    # See if changing this recklessly to cuda 10 does the trick
+    find_package(CUDA 10 QUIET)
     if (CUDA_FOUND)
         set(CUDA9_FOUND TRUE)
         message(STATUS "Found CUDA 9")
