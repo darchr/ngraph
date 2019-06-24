@@ -107,6 +107,12 @@ namespace ngraph
         size_t get_placement() const;
         void set_placement(size_t placement);
 
+        // Callbacks management
+        void set_jl_callback(void* cb) { m_jl_callback = cb; }
+        void clear_jl_callback() { m_jl_callback = nullptr; }
+        const void* get_jl_callback() { return m_jl_callback; }
+        bool has_jl_callback() { return m_jl_callback != nullptr; }
+
     protected:
         ResultVector m_results;
         ParameterVector m_parameters;
@@ -123,5 +129,9 @@ namespace ngraph
         std::string m_name;
         const std::string m_unique_name;
         size_t m_placement{0};
+
+        // For inserting arbitrary callbacks deep into the compilation pipeline.
+        // This is very much a hack, but its an easy way to do this for now.
+        void* m_jl_callback{nullptr};
     };
 }

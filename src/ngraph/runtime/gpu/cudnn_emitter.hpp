@@ -82,6 +82,7 @@ namespace ngraph
                 {
                     HEURISTIC,
                     EXPLICIT,
+                    PRE_SELECTED,
                     NONE
                 };
 
@@ -92,7 +93,9 @@ namespace ngraph
                                          const Strides& window_movement_strides,
                                          const Strides& window_dilation_strides,
                                          const Shape& padding_below,
-                                         const algo_search find_algo = algo_search::NONE);
+                                         const algo_search find_algo = algo_search::NONE,
+                                         const cudnnConvolutionFwdAlgo_t algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM
+                                         );
 
                 size_t build_convolution_backward_data(
                     const std::string& dtype,

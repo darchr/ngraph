@@ -103,6 +103,7 @@
 #include "ngraph/runtime/gpu/gpu_emitter.hpp"
 #include "ngraph/runtime/gpu/gpu_external_function.hpp"
 #include "ngraph/runtime/gpu/gpu_kernel_emitters.hpp"
+#include "ngraph/runtime/gpu/gpu_op_annotations.hpp"
 #include "ngraph/runtime/gpu/gpu_runtime_context.hpp"
 #include "ngraph/runtime/gpu/gpu_tensor_wrapper.hpp"
 
@@ -495,6 +496,17 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                     shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
                     out.push_back(GPUTensorWrapper(tv, m_variable_name_map[tv->get_name()]));
                     node_output_names.emplace_back(tv->get_name());
+                }
+
+                // Check if this node has an algo. If so, add its workspace tensor to the 
+                // list of inputs.
+                //
+                // Could segfault so YOLO
+                if (has_algo(node.get()))
+                {
+                    shared_ptr<descriptor::Tensor> tv = get_workspace_tensor(node.get());
+                    in.push_back(GPUTensorWrapper(tv, m_variable_name_map[tv->get_name()]));
+                    node_input_names.emplace_back(tv->get_name());
                 }
 
                 // Emit function description comment

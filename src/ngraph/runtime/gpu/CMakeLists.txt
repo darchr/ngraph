@@ -36,6 +36,7 @@ set(SRC
     gpu_kernel_args.cpp
     gpu_kernel_emitters.cpp
     gpu_memory_manager.cpp
+    gpu_op_annotations.cpp
     gpu_primitive_emitter.cpp
     gpu_runtime_constructor.cpp
     gpu_runtime_context.cpp
