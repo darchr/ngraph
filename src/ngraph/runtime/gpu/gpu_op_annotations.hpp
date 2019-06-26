@@ -57,9 +57,21 @@ namespace ngraph
                 void set_algo(cudnnConvolutionFwdAlgo_t algo) { m_algo = algo; }
                 std::shared_ptr<ngraph::descriptor::Tensor> get_workspace_tensor() { return m_workspace_tensor; }
                 void set_workspace_tensor(std::shared_ptr<ngraph::descriptor::Tensor> tensor) { m_workspace_tensor = tensor; }
+
+                std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> get_context()
+                {
+                    return m_context;
+                }
+
+                void clear_context() { m_context = nullptr; }
+                void set_context(std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> context)
+                {
+                    m_context = context;
+                }
             private:
                 cudnnConvolutionFwdAlgo_t m_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
                 std::shared_ptr<ngraph::descriptor::Tensor>  m_workspace_tensor;
+                std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> m_context;
             };
 
             // class ConvBwdDataAnnotations : public GPUOpAnnotations
@@ -109,24 +121,6 @@ namespace ngraph
                 typedef cudnnConvolutionFwdAlgo_t type;
             };
 
-            // TODO: Bool function that returns if a op has algorithm selection
-            // TODO: profile routine to return algorithm performance and workspace sizes
-            //      for the different algorithms
-            // TODO: Assign the algorithm and workspace size for the op.
-            bool can_select_algo(const std::shared_ptr<Node> node);
-
-            void set_algo(const std::shared_ptr<Node> node, size_t algo_enum, size_t workspace_size);
-            void set_algo(const std::shared_ptr<op::Convolution> node, size_t algo_enum, size_t workspace_size);
-
-            std::vector<std::tuple<size_t, float, size_t>> get_algo_options(
-                    const std::shared_ptr<Node> node,
-                    const std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> ctx
-                    );
-
-            std::vector<std::tuple<size_t, float, size_t>> get_algo_options(
-                    const std::shared_ptr<op::Convolution> node,
-                    const std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> ctx
-                    );
 
             /////
             ///// Query Functions
@@ -156,6 +150,33 @@ namespace ngraph
                 if (op_convolution)
                 {
                     return has_algo(op_convolution);
+                }
+                return false;
+            }
+
+            // Annotation Initializer
+            template<typename T>
+            inline bool do_annotation(
+                    T* node,
+                    std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> ctx
+                )
+            {
+                auto annotation = std::make_shared<typename FwdAnnotationType<T>::type>();
+                annotation->set_context(ctx);
+                node->set_op_annotations(annotation);
+                return true;
+            }
+
+            template<>
+            inline bool do_annotation(
+                    Node* node,
+                    std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> ctx
+                )
+            {
+                auto op_convolution = dynamic_cast<ngraph::op::Convolution*>(node);
+                if (op_convolution)
+                {
+                    return do_annotation(op_convolution, ctx);
                 }
                 return false;
             }

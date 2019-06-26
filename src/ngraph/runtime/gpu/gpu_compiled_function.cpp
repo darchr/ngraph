@@ -43,6 +43,7 @@
 #include "ngraph/runtime/gpu/op/batch_norm.hpp"
 #include "ngraph/runtime/gpu/op/rnn.hpp"
 #include "ngraph/runtime/gpu/pass/gpu_batch_norm_cache.hpp"
+#include "ngraph/runtime/gpu/pass/gpu_jl_callback.hpp"
 #include "ngraph/runtime/gpu/pass/gpu_layout.hpp"
 #include "ngraph/runtime/gpu/pass/gpu_rnn_fusion.hpp"
 #include "ngraph/runtime/gpu/pass/tensor_memory_reservation.hpp"
@@ -173,6 +174,18 @@ void runtime::gpu::GPUCompiledFunction::compile()
     pass_manager.register_pass<runtime::gpu::pass::GPULayout>(this);
     pass_manager.register_pass<ngraph::pass::AssignLayout<descriptor::layout::DenseTensorLayout>>();
     pass_manager.register_pass<ngraph::pass::GetOutputElementElimination>();
+    // Check if there's a jl_callback attached to the function. If so, setup the jl_callvack
+    // gpu pass
+    void* jl_callback = m_function->get_jl_callback();
+    std::cout << "Address of jl_callback: " << jl_callback << std::endl;
+    if (jl_callback) 
+    {
+        std::cout << "Setting up JL Callback pass" << std::endl;
+        pass_manager.register_pass<runtime::gpu::pass::GPU_JL_Callback>(
+            m_shared_context,
+            reinterpret_cast<void (*)()>(jl_callback)
+        );
+    }
     pass_manager.register_pass<ngraph::pass::Liveness>();
     pass_manager.register_pass<ngraph::pass::MemoryLayout>(get_memory_alignment());
     pass_manager.register_pass<runtime::gpu::pass::TensorMemoryReservation>(

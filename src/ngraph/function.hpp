@@ -110,7 +110,7 @@ namespace ngraph
         // Callbacks management
         void set_jl_callback(void* cb) { m_jl_callback = cb; }
         void clear_jl_callback() { m_jl_callback = nullptr; }
-        const void* get_jl_callback() { return m_jl_callback; }
+        void* get_jl_callback() { return m_jl_callback; }
         bool has_jl_callback() { return m_jl_callback != nullptr; }
 
     protected:

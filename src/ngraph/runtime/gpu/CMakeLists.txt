@@ -31,6 +31,7 @@ set(SRC
     gpu_cuda_kernel_builder.cpp
     gpu_emitter.cpp
     gpu_compiled_function.cpp
+    gpu_helper.cpp
     gpu_internal_function.cpp
     gpu_invoke.cpp
     gpu_kernel_args.cpp
@@ -45,6 +46,7 @@ set(SRC
     gpu_util.cpp
     type_info.cpp
     pass/gpu_batch_norm_cache.cpp
+    pass/gpu_jl_callback.cpp
     pass/gpu_layout.cpp
     pass/gpu_rnn_fusion.cpp
     pass/tensor_memory_reservation.cpp
