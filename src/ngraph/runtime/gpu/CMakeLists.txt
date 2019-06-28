@@ -48,6 +48,7 @@ set(SRC
     pass/gpu_batch_norm_cache.cpp
     pass/gpu_jl_callback.cpp
     pass/gpu_layout.cpp
+    pass/gpu_memory_assignment.cpp
     pass/gpu_rnn_fusion.cpp
     pass/tensor_memory_reservation.cpp
     op/batch_norm.cpp

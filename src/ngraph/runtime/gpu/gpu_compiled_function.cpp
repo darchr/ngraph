@@ -47,6 +47,7 @@
 #include "ngraph/runtime/gpu/pass/gpu_layout.hpp"
 #include "ngraph/runtime/gpu/pass/gpu_rnn_fusion.hpp"
 #include "ngraph/runtime/gpu/pass/tensor_memory_reservation.hpp"
+#include "ngraph/runtime/gpu/pass/gpu_memory_assignment.hpp"
 
 using namespace std;
 using namespace ngraph;
@@ -186,8 +187,9 @@ void runtime::gpu::GPUCompiledFunction::compile()
             reinterpret_cast<void (*)()>(jl_callback)
         );
     }
-    pass_manager.register_pass<ngraph::pass::Liveness>();
-    pass_manager.register_pass<ngraph::pass::MemoryLayout>(get_memory_alignment());
+    pass_manager.register_pass<ngraph::runtime::gpu::pass::GPUMemoryLayout>(get_memory_alignment());
+    //pass_manager.register_pass<ngraph::pass::Liveness>();
+    //pass_manager.register_pass<ngraph::pass::MemoryLayout>(get_memory_alignment());
     pass_manager.register_pass<runtime::gpu::pass::TensorMemoryReservation>(
         *allocator, m_tensor_memory_buffers);
     string dump_filename = file_util::path_join(get_output_dir(), m_function_name + "_ops.txt");
