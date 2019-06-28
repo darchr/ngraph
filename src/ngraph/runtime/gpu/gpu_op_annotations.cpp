@@ -17,9 +17,9 @@ using namespace std;
 /////
 
 cudnnTensorDescriptor_t& runtime::gpu::tensor_descriptor_from_shape(
-    const Shape& shape, const cudnnDataType_t data_type, const cudnnTensorFormat_t tensor_format)
+    const Shape& shape, const cudnnDataType_t data_type, const cudnnTensorFormat_t tensor_format,
+    const std::shared_ptr<runtime::gpu::CUDNNDescriptors> descriptors)
 {
-    auto descriptors = make_shared<runtime::gpu::CUDNNDescriptors>();
     cudnnTensorDescriptor_t& desc = descriptors->build<cudnnTensorDescriptor_t>();
     if (shape.size() < 4)
     {
@@ -91,9 +91,9 @@ cudnnDataType_t runtime::gpu::get_cudnn_datatype(const element::Type& dtype)
 }
 
 cudnnFilterDescriptor_t& runtime::gpu::get_cudnn_filter_descriptor(
-    const Shape& shape, const cudnnDataType_t data_type, const cudnnTensorFormat_t tensor_format)
+    const Shape& shape, const cudnnDataType_t data_type, const cudnnTensorFormat_t tensor_format,
+    const std::shared_ptr<runtime::gpu::CUDNNDescriptors> descriptors)
 {
-    auto descriptors = make_shared<runtime::gpu::CUDNNDescriptors>();
     std::vector<int> dimensions(fmax(4, shape.size()), 1);
     int idx = 0;
     for (size_t i = dimensions.size() - shape.size(); i < dimensions.size(); i++)
@@ -130,10 +130,10 @@ cudnnConvolutionDescriptor_t& runtime::gpu::get_cudnn_convolution_descriptor(
     const Strides& window_movement_strides,
     const Strides& window_dilation_strides,
     cudnnConvolutionMode_t mode,
-    cudnnDataType_t data_type)
+    cudnnDataType_t data_type,
+    const std::shared_ptr<runtime::gpu::CUDNNDescriptors> descriptors)
 {
 
-    auto descriptors = make_shared<runtime::gpu::CUDNNDescriptors>();
     auto& conv_descriptor = descriptors->build<cudnnConvolutionDescriptor_t>();
     std::vector<int> window_movement_strides_int(window_movement_strides.size());
     std::vector<int> window_dilation_strides_int(window_dilation_strides.size());

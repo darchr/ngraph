@@ -19,6 +19,7 @@
 #include "ngraph/op/util/op_annotations.hpp"
 #include "ngraph/op/op.hpp"
 #include "ngraph/op/convolution.hpp"
+#include "ngraph/runtime/gpu/cudnn_descriptors.hpp"
 #include "ngraph/runtime/gpu/gpu_backend.hpp"
 
 #include <cudnn.h>
@@ -68,10 +69,13 @@ namespace ngraph
                 {
                     m_context = context;
                 }
+
+                bool is_configured() { return m_configured; }
             private:
                 cudnnConvolutionFwdAlgo_t m_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
                 std::shared_ptr<ngraph::descriptor::Tensor>  m_workspace_tensor;
                 std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> m_context;
+                bool m_configured = false;
             };
 
             // class ConvBwdDataAnnotations : public GPUOpAnnotations
@@ -220,7 +224,8 @@ namespace ngraph
             cudnnTensorDescriptor_t&
                 tensor_descriptor_from_shape(const Shape& shape,
                                              const cudnnDataType_t data_type,
-                                             const cudnnTensorFormat_t tensor_format);
+                                             const cudnnTensorFormat_t tensor_format, 
+                                             const std::shared_ptr<runtime::gpu::CUDNNDescriptors> descriptors);
 
             cudnnDataType_t get_cudnn_datatype(std::string dtype);
             cudnnDataType_t get_cudnn_datatype(const element::Type& dtype);
@@ -228,14 +233,16 @@ namespace ngraph
             cudnnFilterDescriptor_t&
                 get_cudnn_filter_descriptor(const Shape& shape,
                                             const cudnnDataType_t data_type,
-                                            const cudnnTensorFormat_t tensor_format);
+                                            const cudnnTensorFormat_t tensor_format,
+                                            const std::shared_ptr<runtime::gpu::CUDNNDescriptors> descriptors);
 
             cudnnConvolutionDescriptor_t&
                 get_cudnn_convolution_descriptor(const Shape& padding,
                                                  const Strides& window_movement_strides,
                                                  const Strides& window_dilation_strides,
                                                  cudnnConvolutionMode_t mode,
-                                                 cudnnDataType_t data_type);
+                                                 cudnnDataType_t data_type,
+                                                 const std::shared_ptr<runtime::gpu::CUDNNDescriptors> descriptors);
         }
     }
 }

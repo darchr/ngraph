@@ -1,7 +1,10 @@
+#include <type_traits>
+
 #include "ngraph/op/util/op_annotations.hpp"
 #include "ngraph/op/op.hpp"
 #include "ngraph/op/convolution.hpp"
 #include "ngraph/runtime/gpu/gpu_backend.hpp"
+
 
 #pragma once
 
@@ -21,14 +24,19 @@ namespace ngraph
             void set_algo(const std::shared_ptr<Node> node, size_t algo_enum, size_t workspace_size);
             void set_algo(const std::shared_ptr<op::Convolution> node, size_t algo_enum, size_t workspace_size);
 
-            std::vector<std::tuple<size_t, float, size_t>> get_algo_options(
+            std::vector<std::tuple<uint32_t, float, size_t>> get_algo_options(
                     const std::shared_ptr<Node> node
                     );
 
-            std::vector<std::tuple<size_t, float, size_t>> get_algo_options(
+            std::vector<std::tuple<uint32_t, float, size_t>> get_algo_options(
                     const std::shared_ptr<op::Convolution> node
                     );
 
+            // Method to convert an ENUM to its umnderlying type.
+            template <typename E>
+            constexpr typename std::underlying_type<E>::type to_underlying(E e) noexcept {
+                return static_cast<typename std::underlying_type<E>::type>(e);
+            }
         }
     }
 }

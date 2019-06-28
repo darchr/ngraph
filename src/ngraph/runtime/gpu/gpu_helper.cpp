@@ -13,7 +13,6 @@
 using namespace std;
 using namespace ngraph;
 
-
 bool runtime::gpu::can_select_algo(const std::shared_ptr<Node> node)
 {
     // Check if it's a convolution
@@ -51,10 +50,9 @@ void runtime::gpu::set_algo(const std::shared_ptr<op::Convolution> node, size_t 
             tensor_name
             );
 
-    auto annotation = std::make_shared<runtime::gpu::ConvFwdAnnotations>();
+    auto annotation = std::dynamic_pointer_cast<runtime::gpu::ConvFwdAnnotations>(node->get_op_annotations());
     annotation->set_algo(algo);
     annotation->set_workspace_tensor(workspace_tensor);
-    node->set_op_annotations(annotation);
 }
 
 /////
@@ -62,7 +60,7 @@ void runtime::gpu::set_algo(const std::shared_ptr<op::Convolution> node, size_t 
 /////
 
 // Need to pass te backend context for getting the cudnn handle
-std::vector<std::tuple<size_t, float, size_t>> runtime::gpu::get_algo_options(
+std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
         const std::shared_ptr<Node> node
         //const std::shared_ptr<runtime::gpu::GPU_Backend::BackendContext> ctx
         )
@@ -77,13 +75,14 @@ std::vector<std::tuple<size_t, float, size_t>> runtime::gpu::get_algo_options(
 }
 
 // This follows the style of `build_convolution` in `cudnn_emitter.cpp`.
-std::vector<std::tuple<size_t, float, size_t>> runtime::gpu::get_algo_options(
+std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
         const std::shared_ptr<op::Convolution> node
         //const std::shared_ptr<runtime::gpu::GPU_Backend::BackendContext> ctx
         )
 {
     // Get the backend context from the op annotations
-    auto annotation = dynamic_pointer_cast<runtime::gpu::ConvFwdAnnotations>(node->get_op_annotations()); 
+    auto annotation_untyped = node->get_op_annotations();
+    auto annotation = dynamic_pointer_cast<runtime::gpu::ConvFwdAnnotations>(annotation_untyped);
     NGRAPH_ASSERT(annotation);
     std::shared_ptr<runtime::gpu::GPU_Backend::BackendContext> ctx = annotation->get_context();
 
@@ -94,6 +93,7 @@ std::vector<std::tuple<size_t, float, size_t>> runtime::gpu::get_algo_options(
     auto input_shape = args[0].get_shape();
     auto filter_shape = args[1].get_shape();
     auto output_shape = out[0].get_shape();
+
     Strides window_dilation_strides = node->get_window_dilation_strides();
     Strides window_movement_strides = node->get_window_movement_strides();
     Strides data_dilation_strides = node->get_data_dilation_strides();
@@ -114,14 +114,15 @@ std::vector<std::tuple<size_t, float, size_t>> runtime::gpu::get_algo_options(
     const cudnnTensorFormat_t tensor_format = CUDNN_TENSOR_NCHW;
     const cudnnConvolutionMode_t mode = CUDNN_CROSS_CORRELATION;
 
+    auto descriptors = std::make_shared<runtime::gpu::CUDNNDescriptors>();
     auto& tensor_desc_0 =
-        runtime::gpu::tensor_descriptor_from_shape(input_shape, data_type, tensor_format);
+        runtime::gpu::tensor_descriptor_from_shape(input_shape, data_type, tensor_format, descriptors);
     auto& tensor_desc_1 =
-        tensor_descriptor_from_shape(output_shape, data_type, tensor_format);
-    auto& filter_desc = runtime::gpu::get_cudnn_filter_descriptor(filter_shape, data_type, tensor_format);
+        tensor_descriptor_from_shape(output_shape, data_type, tensor_format, descriptors);
+    auto& filter_desc = runtime::gpu::get_cudnn_filter_descriptor(filter_shape, data_type, tensor_format, descriptors);
     auto& conv_desc = runtime::gpu::get_cudnn_convolution_descriptor(
-        padding_below, window_movement_strides, window_dilation_strides, mode, data_type);
-    cudnnConvolutionFwdAlgo_t conv_fwd_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+        padding_below, window_movement_strides, window_dilation_strides, mode, data_type, descriptors);
+
 
     int num_algos;
     int max_algos = 0;
@@ -141,16 +142,25 @@ std::vector<std::tuple<size_t, float, size_t>> runtime::gpu::get_algo_options(
                                          results.data()));
     results.resize(num_algos);
 
-    // Construct the return type
-    std::vector<std::tuple<size_t, float, size_t>> return_vec;
+    // Construct the return type:
+    //
+    // Algorithm Enum value
+    // Run Time
+    // Memory Footprint
+    std::vector<std::tuple<uint32_t, float, size_t>> return_vec;
     for (auto res: results)
     {
-        auto tup = std::tuple<size_t, float, size_t>(
-                static_cast<size_t>(res.algo),
-                res.time,
-                res.memory
-                );
-        return_vec.push_back(tup);
+        if (res.status == CUDNN_STATUS_SUCCESS)
+        {
+            auto tup = std::tuple<uint32_t, float, size_t>(
+                    ngraph::runtime::gpu::to_underlying(res.algo),
+                    res.time,
+                    res.memory
+                    );
+
+            return_vec.push_back(tup);
+        }
     }
+
     return return_vec;
 }

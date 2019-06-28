@@ -399,6 +399,16 @@ void runtime::gpu::GPUExternalFunction::emit_temp_mem_pool_allocation(
                    << tensor->get_pool_offset() << "))";
                 m_variable_name_map[tensor->get_name()] = ss.str();
             }
+
+            // Emit the workspace pointers
+            if (has_algo(node.get()))
+            {
+                shared_ptr<descriptor::Tensor> tensor = get_workspace_tensor(node.get());
+                stringstream ss;
+                ss << "((void*)(pool_base_ptr + "
+                   << tensor->get_pool_offset() << "))";
+                m_variable_name_map[tensor->get_name()] = ss.str();
+            }
         }
     }
 }
