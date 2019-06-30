@@ -48,6 +48,7 @@ namespace ngraph
                 }
                 size_t reserve_argspace(const void* data, size_t size);
                 size_t reserve_workspace(size_t size, bool zero_initialize = true);
+                size_t reserve_on_host(size_t size);
 
                 void close();
 
@@ -76,6 +77,11 @@ namespace ngraph
                 std::unique_ptr<ngraph::pass::MemoryManager> m_workspace_manager;
                 static constexpr const uint16_t alignment = 8;
 
+                // Handle host allocation.
+                // allign to pages
+                std::unique_ptr<ngraph::pass::MemoryManager> m_host_manager;
+                static constexpr const uint16_t host_alignment = 4096;
+
                 struct allocation
                 {
                     void* ptr;
@@ -84,6 +90,7 @@ namespace ngraph
 
                 std::list<allocation> m_argspace_mem;
                 std::list<allocation> m_workspace_mem;
+                std::list<allocation> m_host_mem;
                 GPUPrimitiveEmitter* m_primitive_emitter;
             };
         }

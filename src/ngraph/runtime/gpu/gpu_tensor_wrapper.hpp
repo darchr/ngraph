@@ -59,6 +59,7 @@ public:
     const std::string& get_name() const;
     const std::string& get_type() const;
     const std::pair<TensorType, size_t>& get_offset() const;
+    size_t get_pool() const;
     friend std::ostream& ngraph::runtime::gpu::
         operator<<(std::ostream& out, const ngraph::runtime::gpu::GPUTensorWrapper& obj);
 

@@ -85,6 +85,7 @@ set (SRC
     op/max_pool.cpp
     op/min.cpp
     op/minimum.cpp
+    op/move.cpp
     op/multiply.cpp
     op/negative.cpp
     op/not.cpp

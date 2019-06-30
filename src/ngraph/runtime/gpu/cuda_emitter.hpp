@@ -20,6 +20,7 @@
 #include "ngraph/code_writer.hpp"
 #include "ngraph/runtime/gpu/gpu_cuda_kernel_ops.hpp"
 #include "ngraph/runtime/gpu/gpu_host_parameters.hpp"
+#include "ngraph/runtime/gpu/gpu_tensor_wrapper.hpp"
 #include "ngraph/runtime/gpu/nvdiff.hpp"
 #include "ngraph/runtime/gpu/nvshape.hpp"
 #include "ngraph/strides.hpp"
@@ -51,6 +52,9 @@ namespace ngraph
 
             public:
                 size_t build_memset(const std::string& dtype, uint32_t tensor_size);
+                size_t build_move(
+                        const std::vector<runtime::gpu::GPUTensorWrapper> &args,
+                        const std::vector<runtime::gpu::GPUTensorWrapper> &kernel_outputs);
 
                 size_t build_topk(const std::vector<element::Type>& dtypes,
                                   const NVShape& input_shape,

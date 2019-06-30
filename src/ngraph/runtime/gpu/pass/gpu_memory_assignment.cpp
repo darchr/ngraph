@@ -28,6 +28,12 @@ bool runtime::gpu::pass::GPUMemoryLayout::run_on_function(shared_ptr<ngraph::Fun
     liveness_analysis(function);
 
     ngraph::pass::MemoryManager mm(m_alignment, m_disable_memory_sharing);
+
+    // MARK: create a memory allocator for the host CPU.
+    //
+    // Set alignment to 4096 to match page size.
+    ngraph::pass::MemoryManager mm_host(4096, false);
+
     for (shared_ptr<Node> node : function->get_ordered_ops())
     {
         std::map<descriptor::Tensor*, descriptor::Tensor*> in_place_outputs;
@@ -48,6 +54,12 @@ bool runtime::gpu::pass::GPUMemoryLayout::run_on_function(shared_ptr<ngraph::Fun
                         auto input = &node->get_inputs().at(oi_pair.input).get_tensor();
                         auto input_node =
                             node->get_inputs().at(oi_pair.input).get_output().get_node();
+
+                        // Skip if input and output tensors are in different pools.
+                        if (output->get_pool_number() == 1 || input->get_pool_number() == 1)
+                        {
+                            continue;
+                        }
 
                         // For destructive kernel, this should be the last use
                         // Non-destructive kernels can pass through if memory sharing is disabled
@@ -70,9 +82,15 @@ bool runtime::gpu::pass::GPUMemoryLayout::run_on_function(shared_ptr<ngraph::Fun
 
         for (descriptor::Tensor* tensor : node->liveness_new_list)
         {
-            size_t offset = in_place_outputs.count(tensor)
-                                ? in_place_outputs.at(tensor)->get_pool_offset()
-                                : mm.allocate(tensor->size());
+            size_t offset;
+            if (tensor->get_pool_number() == 1)
+            {
+                offset = mm_host.allocate(tensor->size());
+            } else {
+                offset = in_place_outputs.count(tensor)
+                                    ? in_place_outputs.at(tensor)->get_pool_offset()
+                                    : mm.allocate(tensor->size());
+            }
             tensor->set_pool_offset(offset);
         }
 
@@ -80,7 +98,11 @@ bool runtime::gpu::pass::GPUMemoryLayout::run_on_function(shared_ptr<ngraph::Fun
         {
             for (const descriptor::Tensor* tensor : node->liveness_free_list)
             {
-                if (reused_inputs.count(tensor) == 0)
+                if (tensor->get_pool_number() == 1)
+                {
+                    mm_host.free(tensor->get_pool_offset());
+                }
+                else if (reused_inputs.count(tensor) == 0)
                 {
                     mm.free(tensor->get_pool_offset());
                 }
@@ -88,6 +110,10 @@ bool runtime::gpu::pass::GPUMemoryLayout::run_on_function(shared_ptr<ngraph::Fun
         }
     }
     function->set_temporary_pool_size(mm.max_allocated());
+    function->set_pmem_pool_size(mm_host.max_allocated());
+
+    std::cout << "C++ (GPU Memory Assignment) Temp Pool Size: " << mm.max_allocated() << std::endl;
+    std::cout << "C++ (GPU Memory Assignment) Host Pool Size: " << mm_host.max_allocated() << std::endl;
 
     return false;
 }

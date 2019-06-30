@@ -77,6 +77,54 @@ runtime::gpu::CUDAEmitter::CUDAEmitter(runtime::gpu::GPUPrimitiveEmitter* emitte
     m_ctx = ctx;
 }
 
+size_t runtime::gpu::CUDAEmitter::build_move(
+        const std::vector<runtime::gpu::GPUTensorWrapper> &args,
+        const std::vector<runtime::gpu::GPUTensorWrapper> &kernel_outputs)
+{
+    // Assert the lengths of `args` and `outputs1 is one
+    NGRAPH_ASSERT(args.size() == 1);
+    NGRAPH_ASSERT(kernel_outputs.size() == 1);
+
+    // Determine which direction the movement is
+    cudaMemcpyKind direction; 
+    auto& input = args[0];
+    auto& output = kernel_outputs[0];
+    if (input.get_pool() == 0 && output.get_pool() == 1)
+    {
+        direction = cudaMemcpyDeviceToHost;
+    } else if (input.get_pool() == 1 && output.get_pool() == 1)
+    {
+        direction = cudaMemcpyHostToDevice;
+    } else {
+        throw ngraph_error("Wierd Pool stuff");
+    }
+
+    // Do the kernel lookup
+    std::stringstream hash;
+    hash << "move_" << direction << "_" << input.get_size();
+
+    // check if the requested kernel is already an inserted primitive
+    size_t primitive_index = m_primitive_emitter->lookup(hash.str());
+    if (primitive_index != std::numeric_limits<size_t>::max())
+    {
+        return primitive_index;
+    }
+
+    std::unique_ptr<gpu::primitive> kernel_launch(new gpu::primitive{[=](void** inputs, void** outputs)
+        {
+            if (direction == cudaMemcpyDeviceToHost)
+            {
+                cuda_memcpyDtH(inputs[0], outputs[0], input.get_size());
+            } else {
+                cuda_memcpyHtD(inputs[0], outputs[0], input.get_size());
+            }
+            debug_sync();
+        }
+    });
+
+    return this->m_primitive_emitter->register_primitive(kernel_launch, hash.str());
+}
+
 size_t runtime::gpu::CUDAEmitter::build_concat(const std::string& dtype,
                                                std::vector<NVShape> input_shapes,
                                                size_t concat_axis,

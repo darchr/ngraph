@@ -28,8 +28,10 @@ runtime::gpu::GPUMemoryManager::GPUMemoryManager(GPUPrimitiveEmitter* emitter)
     : m_buffer_offset(0)
     , m_buffered_mem(initial_buffer_size, 0)
     , m_workspace_manager(new pass::MemoryManager(runtime::gpu::GPUMemoryManager::alignment))
+    , m_host_manager(new pass::MemoryManager(runtime::gpu::GPUMemoryManager::host_alignment))
     , m_argspace_mem(1, {nullptr, 0})
     , m_workspace_mem(1, {nullptr, 0})
+    , m_host_mem(1, {nullptr, 0})
     , m_primitive_emitter(emitter)
 {
 }
@@ -57,6 +59,10 @@ runtime::gpu::GPUMemoryManager::~GPUMemoryManager()
     for (auto& alloc : m_workspace_mem)
     {
         runtime::gpu::free_gpu_buffer(alloc.ptr);
+    }
+    for (auto& alloc : m_host_mem)
+    {
+        runtime::gpu::free_host_buffer(alloc.ptr);
     }
 }
 
@@ -93,6 +99,17 @@ void runtime::gpu::GPUMemoryManager::allocate()
         m_workspace_mem.push_back({nullptr, 0});
         m_workspace_manager.reset(
             new pass::MemoryManager(runtime::gpu::GPUMemoryManager::alignment));
+    }
+
+    auto host_workspace_size = m_workspace_manager->max_allocated();
+    if (host_workspace_size)
+    {
+        std::cout << "C++: Allocating host workspace" << std::endl;
+        m_host_mem.back().ptr = runtime::gpu::create_host_buffer(workspace_size);
+        m_host_mem.back().size = workspace_size;
+        m_host_mem.push_back({nullptr, 0});
+        m_host_manager.reset(
+            new pass::MemoryManager(runtime::gpu::GPUMemoryManager::host_alignment));
     }
 }
 
@@ -139,6 +156,7 @@ size_t runtime::gpu::GPUAllocator::reserve_argspace(const void* data, size_t siz
     // add parameter data to host buffer that will be transfered to device
     size_t offset = m_manager->queue_for_transfer(data, size);
     auto local = std::prev(m_manager->m_argspace_mem.end());
+    std::cout << "C++: Reserving argspace of size: " << size << std::endl;
     // return a lambda that will yield the gpu memory address. this
     // should only be evaluated by the runtime invoked primitive
     gpu::memory_primitive mem_primitive = [=]() {
@@ -159,6 +177,7 @@ size_t runtime::gpu::GPUAllocator::reserve_workspace(size_t size, bool zero_init
     {
         return m_manager->m_primitive_emitter->insert([]() { return nullptr; });
     }
+    std::cout << "C++: Reserving workspace of size: " << size << std::endl;
 
     size_t offset = m_manager->m_workspace_manager->allocate(size);
     m_active.push(offset);
@@ -182,10 +201,37 @@ size_t runtime::gpu::GPUAllocator::reserve_workspace(size_t size, bool zero_init
     return m_manager->m_primitive_emitter->insert(std::move(mem_primitive));
 }
 
+size_t runtime::gpu::GPUAllocator::reserve_on_host(size_t size)
+{
+    if (size == 0)
+    {
+        return m_manager->m_primitive_emitter->insert([]() { return nullptr; });
+    }
+    std::cout << "C++: Reserving host workspace of size: " << size << std::endl;
+
+    size_t offset = m_manager->m_workspace_manager->allocate(size);
+    m_active.push(offset);
+    auto local = std::prev(m_manager->m_workspace_mem.end());
+    // return a lambda that will yield the gpu memory address. this
+    // should only be evaluated by the runtime invoked primitive
+    gpu::memory_primitive mem_primitive = [=]() {
+        void* workspace = (*local).ptr;
+        if (workspace == nullptr)
+        {
+            throw std::runtime_error("An attempt was made to use unallocated device memory.");
+        }
+        auto host_mem = static_cast<uint8_t*>(workspace);
+        auto workspace_ptr = static_cast<void*>(host_mem + offset);
+        return workspace_ptr;
+    };
+    return m_manager->m_primitive_emitter->insert(std::move(mem_primitive));
+}
+
 void runtime::gpu::GPUAllocator::close()
 {
     while (!m_active.empty())
     {
+        std::cout << "C++: Freeing GPU Workspace" << std::endl;
         m_manager->m_workspace_manager->free(m_active.top());
         m_active.pop();
     }

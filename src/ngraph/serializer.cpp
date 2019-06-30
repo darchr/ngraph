@@ -892,6 +892,14 @@ static shared_ptr<ngraph::Function>
                 node = make_shared<op::Minimum>(args[0], args[1]);
                 break;
             }
+            case OP_TYPEID::Move:
+            {
+                throw ngraph_error("Move Not supported for serialization");
+            }
+            case OP_TYPEID::MoveAsync:
+            {
+                throw ngraph_error("MoveAsync Not supported for serialization");
+            }
             case OP_TYPEID::Multiply:
             {
                 node = make_shared<op::Multiply>(args[0], args[1]);
@@ -1537,6 +1545,10 @@ static json write(const Node& n, bool binary_constant_data)
     case OP_TYPEID::Minimum: { break;
     }
     case OP_TYPEID::Multiply: { break;
+    }
+    case OP_TYPEID::Move: { break;
+    }
+    case OP_TYPEID::MoveAsync: { break;
     }
     case OP_TYPEID::Negative: { break;
     }

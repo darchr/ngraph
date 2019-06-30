@@ -62,6 +62,21 @@ void runtime::gpu::free_gpu_buffer(void* buffer)
     }
 }
 
+void* runtime::gpu::create_host_buffer(size_t buffer_size)
+{
+    void* allocated_buffer_pool;
+    CUDA_RT_SAFE_CALL(cudaMallocHost(static_cast<void**>(&allocated_buffer_pool), buffer_size));
+    return allocated_buffer_pool;
+}
+
+void runtime::gpu::free_host_buffer(void* buffer)
+{
+    if (buffer)
+    {
+        CUDA_RT_SAFE_CALL(cudaFreeHost(buffer));
+    }
+}
+
 void runtime::gpu::cuda_memcpyDtD(void* dst, const void* src, size_t buffer_size)
 {
     CUDA_RT_SAFE_CALL(cudaMemcpy(dst, src, buffer_size, cudaMemcpyDeviceToDevice));

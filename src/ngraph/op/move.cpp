@@ -1,10 +1,12 @@
-#include "ngraph/runtime/cpu/op/move.hpp"
+#include "ngraph/op/move.hpp"
 #include "ngraph/util.hpp"
-#include "ngraph/runtime/cpu/cpu_layout_descriptor.hpp"
 
 using namespace std;
 using namespace ngraph;
 
+// MARK: Note - these are meant to be inserted after most compiler passes run.
+//
+// Not save for general use.
 shared_ptr<Node> op::Move::copy_with_new_args(const NodeVector& new_args) const
 {
     if (new_args.size() != 1)

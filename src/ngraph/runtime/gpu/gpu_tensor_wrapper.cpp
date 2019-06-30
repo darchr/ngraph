@@ -84,6 +84,11 @@ const std::string& runtime::gpu::GPUTensorWrapper::get_type() const
     return get_element_type().c_type_string();
 }
 
+size_t runtime::gpu::GPUTensorWrapper::get_pool() const
+{
+    return m_tensor->get_pool_number();
+}
+
 std::ostream& ngraph::runtime::gpu::operator<<(std::ostream& out,
                                                const ngraph::runtime::gpu::GPUTensorWrapper& obj)
 {

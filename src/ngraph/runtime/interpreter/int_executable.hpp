@@ -894,6 +894,14 @@ private:
                                   element_count);
             break;
         }
+        case OP_TYPEID::Move:{
+            throw ngraph_error("Move not supported");
+            break;
+        }
+        case OP_TYPEID::MoveAsync:{
+            throw ngraph_error("MoveAsync not supported");
+            break;
+        }
         case OP_TYPEID::Multiply:
         {
             size_t element_count = shape_size(node.get_output_shape(0));

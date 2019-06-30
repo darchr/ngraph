@@ -30,6 +30,8 @@ namespace ngraph
             void check_cuda_errors(CUresult err);
             void* create_gpu_buffer(size_t buffer_size, const void* data = nullptr);
             void free_gpu_buffer(void* buffer);
+            void* create_host_buffer(size_t buffer_size);
+            void free_host_buffer(void* buffer);
             void cuda_memcpyDtD(void* dst, const void* src, size_t buffer_size);
             void cuda_memcpyHtD(void* dst, const void* src, size_t buffer_size);
             void cuda_memcpyDtH(void* dst, const void* src, size_t buffer_size);

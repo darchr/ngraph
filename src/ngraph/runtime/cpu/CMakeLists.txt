@@ -100,7 +100,6 @@ set(SRC
     op/lstm.cpp
     op/matmul_bias.cpp
     op/max_pool_with_indices.cpp
-    op/move.cpp
     op/rnn.cpp
     op/sigmoid_mul.cpp
     op/update_slice.cpp

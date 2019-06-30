@@ -77,6 +77,7 @@
 #include "ngraph/op/maximum.hpp"
 #include "ngraph/op/min.hpp"
 #include "ngraph/op/minimum.hpp"
+#include "ngraph/op/move.hpp"
 #include "ngraph/op/multiply.hpp"
 #include "ngraph/op/negative.hpp"
 #include "ngraph/op/not.hpp"
@@ -142,6 +143,20 @@ function<std::string(EMIT_ARGS)> runtime::gpu::GPU_Emitter::get_emit_function(co
     }
 
     return it->second;
+}
+
+// MARK: Move ops
+std::string runtime::gpu::GPU_Emitter::emit_Move(EMIT_ARGS)
+{
+    //auto& cuda_emitter = compiled_function->
+    auto& cuda_emitter = compiled_function->get_primitive_emitter()->get_cuda_emitter();
+    size_t index =  cuda_emitter->build_move(args, out);
+    return compiled_function->add_to_runtime(index, function_name, args, out);
+}
+
+std::string runtime::gpu::GPU_Emitter::emit_MoveAsync(EMIT_ARGS)
+{
+    throw ngraph_error("Move Async not implemented");
 }
 
 std::string runtime::gpu::GPU_Emitter::emit_Abs(EMIT_ARGS)
