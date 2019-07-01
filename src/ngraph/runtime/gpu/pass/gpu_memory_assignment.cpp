@@ -82,6 +82,7 @@ bool runtime::gpu::pass::GPUMemoryLayout::run_on_function(shared_ptr<ngraph::Fun
 
         for (descriptor::Tensor* tensor : node->liveness_new_list)
         {
+            std::cout << "C++ - Working on: " << tensor->get_name() << std::endl;
             size_t offset;
             if (tensor->get_pool_number() == 1)
             {

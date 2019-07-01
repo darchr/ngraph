@@ -153,7 +153,11 @@ void runtime::gpu::GPUCompiledFunction::compile()
     {
         return;
     }
-    std::unique_lock<std::mutex> lock(s_compilation);
+    // MARK: Doing a dangerous thing and not locking the compilation mutex.
+    //
+    // This is because I potentially compile sub programs during the compilation process
+    // of the entire program, and the lock is killing that.
+    //std::unique_lock<std::mutex> lock(s_compilation);
 
     m_function_name = m_function->get_name();
 

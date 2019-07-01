@@ -80,8 +80,8 @@ namespace ngraph
 
             std::string m_name;
             std::shared_ptr<layout::TensorLayout> m_tensor_layout;
-            size_t m_pool_offset{0};
-            size_t m_pool_number{0};
+            size_t m_pool_offset = 0;
+            size_t m_pool_number = 0;
         };
 
         std::ostream& operator<<(std::ostream&, const ngraph::descriptor::Tensor&);

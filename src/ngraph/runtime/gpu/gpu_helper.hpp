@@ -1,5 +1,6 @@
 #include <type_traits>
 
+#include "ngraph/runtime/performance_counter.hpp"
 #include "ngraph/op/util/op_annotations.hpp"
 #include "ngraph/op/op.hpp"
 #include "ngraph/op/convolution.hpp"
