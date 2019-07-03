@@ -17,6 +17,7 @@
 #pragma once
 
 #include <array>
+#include <cuda_runtime.h> /* for cudaStream_t */
 #include "ngraph/code_writer.hpp"
 #include "ngraph/runtime/gpu/gpu_cuda_kernel_ops.hpp"
 #include "ngraph/runtime/gpu/gpu_host_parameters.hpp"
@@ -49,8 +50,12 @@ namespace ngraph
                 size_t build_primitive(const op::Convolution* node);
                 size_t build_primitive(const op::MaxPool* node);
                 size_t build_primitive(const op::ReplaceSlice* node, bool in_place_op);
+                ~CUDAEmitter();
 
             public:
+                size_t build_moveasync(cudaMemcpyKind kind, size_t size);
+                size_t build_syncbarrier();
+
                 size_t build_memset(const std::string& dtype, uint32_t tensor_size);
 
                 size_t build_topk(const std::vector<element::Type>& dtypes,
@@ -279,6 +284,9 @@ namespace ngraph
                 std::shared_ptr<GPUHostParameters> m_host_parameters;
                 GPUPrimitiveEmitter* m_primitive_emitter;
                 GPURuntimeContext* m_ctx;
+
+                // MARK: Custom stream for asynchronously overlapping communication
+                cudaStream_t m_async_stream; 
             };
         }
     }

@@ -552,7 +552,7 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                 }
 
                 // Emit operation body
-                m_writer << "std::cout << \"Running: \" << \"" << node->get_name() << "\" << std::endl;\n";
+                //m_writer << "std::cout << \"Running: \" << \"" << node->get_name() << "\" << std::endl;\n";
                 auto it = m_node_function_map.find(node.get());
                 if (it == m_node_function_map.end())
                 {

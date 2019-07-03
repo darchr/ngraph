@@ -53,6 +53,7 @@ set(SRC
     pass/tensor_memory_reservation.cpp
     op/batch_norm.cpp
     op/rnn.cpp
+    op/sync.cpp
     )
 
 if (NOT NGRAPH_DEX_ONLY)

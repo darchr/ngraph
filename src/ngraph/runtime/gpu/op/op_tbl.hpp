@@ -19,3 +19,4 @@
 NGRAPH_OP(Rnn, ngraph::op::gpu)
 #endif
 NGRAPH_OP(BatchNormTrainingWithStats, ngraph::op::gpu)
+NGRAPH_OP(SyncBarrier, ngraph::op)

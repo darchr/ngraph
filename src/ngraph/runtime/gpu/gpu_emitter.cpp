@@ -119,6 +119,7 @@
 #include "ngraph/runtime/gpu/gpu_util.hpp"
 #include "ngraph/runtime/gpu/op/batch_norm.hpp"
 #include "ngraph/runtime/gpu/op/rnn.hpp"
+#include "ngraph/runtime/gpu/op/sync.hpp"
 #include "ngraph/runtime/gpu/type_info.hpp"
 #include "ngraph/util.hpp"
 
@@ -170,7 +171,33 @@ std::string runtime::gpu::GPU_Emitter::emit_Move(EMIT_ARGS)
 
 std::string runtime::gpu::GPU_Emitter::emit_MoveAsync(EMIT_ARGS)
 {
-    throw ngraph_error("Move Async not implemented");
+    auto& cuda_emitter = compiled_function->get_primitive_emitter()->get_cuda_emitter();
+    cudaMemcpyKind kind;
+    if (args[0].get_pool() == 1 && out[0].get_pool() == 0)
+    {
+        kind = cudaMemcpyHostToDevice;
+    } else if (args[0].get_pool() == 0 && out[0].get_pool() == 1) {
+        kind = cudaMemcpyDeviceToHost;
+    } else {
+        std::cout << "POOL ERROR: " << args[0].get_pool() << std::endl;
+        std::cout << "POOL ERROR: " << out[0].get_pool() << std::endl;
+        throw ngraph_error("Wierd Pool stuff");
+    }
+
+    size_t index = cuda_emitter->build_moveasync(
+        kind,
+        out[0].get_size() * out[0].get_element_type().size()
+    );
+
+    return compiled_function->add_to_runtime(index, function_name, args, out);
+}
+
+std::string runtime::gpu::GPU_Emitter::emit_SyncBarrier(EMIT_ARGS)
+{
+    //NGRAPH_ASSERT(args[0].get_name() == out[0].get_name());
+    auto& cuda_emitter = compiled_function->get_primitive_emitter()->get_cuda_emitter();
+    size_t index = cuda_emitter->build_syncbarrier();
+    return compiled_function->add_to_runtime(index, function_name, args, out);
 }
 
 std::string runtime::gpu::GPU_Emitter::emit_Abs(EMIT_ARGS)

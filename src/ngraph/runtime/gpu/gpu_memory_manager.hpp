@@ -55,6 +55,7 @@ namespace ngraph
             private:
                 GPUMemoryManager* m_manager;
                 std::stack<size_t> m_active;
+                std::stack<size_t> m_host_active;
             };
 
             class GPUMemoryManager

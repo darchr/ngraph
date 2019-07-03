@@ -101,11 +101,11 @@ void runtime::gpu::GPUMemoryManager::allocate()
             new pass::MemoryManager(runtime::gpu::GPUMemoryManager::alignment));
     }
 
-    auto host_workspace_size = m_workspace_manager->max_allocated();
+    auto host_workspace_size = m_host_manager->max_allocated();
     if (host_workspace_size)
     {
-        std::cout << "C++: Allocating host workspace" << std::endl;
-        m_host_mem.back().ptr = runtime::gpu::create_host_buffer(workspace_size);
+        //std::cout << "C++: Allocating host workspace: " << host_workspace_size << std::endl;
+        m_host_mem.back().ptr = runtime::gpu::create_host_buffer(host_workspace_size);
         m_host_mem.back().size = workspace_size;
         m_host_mem.push_back({nullptr, 0});
         m_host_manager.reset(
@@ -149,6 +149,7 @@ runtime::gpu::GPUAllocator::GPUAllocator(const GPUAllocator& g)
 {
     m_manager = g.m_manager;
     m_active = g.m_active;
+    m_host_active = g.m_host_active;
 }
 
 size_t runtime::gpu::GPUAllocator::reserve_argspace(const void* data, size_t size)
@@ -209,9 +210,9 @@ size_t runtime::gpu::GPUAllocator::reserve_on_host(size_t size)
     }
     std::cout << "C++: Reserving host workspace of size: " << size << std::endl;
 
-    size_t offset = m_manager->m_workspace_manager->allocate(size);
-    m_active.push(offset);
-    auto local = std::prev(m_manager->m_workspace_mem.end());
+    size_t offset = m_manager->m_host_manager->allocate(size);
+    m_host_active.push(offset);
+    auto local = std::prev(m_manager->m_host_mem.end());
     // return a lambda that will yield the gpu memory address. this
     // should only be evaluated by the runtime invoked primitive
     gpu::memory_primitive mem_primitive = [=]() {
@@ -231,9 +232,13 @@ void runtime::gpu::GPUAllocator::close()
 {
     while (!m_active.empty())
     {
-        std::cout << "C++: Freeing GPU Workspace" << std::endl;
         m_manager->m_workspace_manager->free(m_active.top());
         m_active.pop();
+    }
+    while (!m_host_active.empty())
+    {
+        m_manager->m_host_manager->free(m_host_active.top());
+        m_host_active.pop();
     }
 }
 runtime::gpu::GPUAllocator::~GPUAllocator()

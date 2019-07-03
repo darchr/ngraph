@@ -75,6 +75,61 @@ runtime::gpu::CUDAEmitter::CUDAEmitter(runtime::gpu::GPUPrimitiveEmitter* emitte
     , m_primitive_emitter(emitter)
 {
     m_ctx = ctx;
+    // MARK: Added stream creation
+    cudaStreamCreate(&m_async_stream);
+}
+
+// MARK: Added the destructor to clean up streams
+runtime::gpu::CUDAEmitter::~CUDAEmitter()
+{
+    cudaStreamDestroy(m_async_stream);
+}
+
+// MARK: Async Movement and Synchronization
+size_t runtime::gpu::CUDAEmitter::build_moveasync(
+        cudaMemcpyKind kind,
+        size_t size)
+{
+
+    // Check to see if we already compiled this kernle
+    std::stringstream kernel_name;
+    kernel_name << "moveasync_" << size << "_" << kind;
+    size_t primitive_index = m_primitive_emitter->lookup(kernel_name.str());
+    if (primitive_index != std::numeric_limits<size_t>::max())
+    {
+        return primitive_index;
+    }
+
+    std::unique_ptr<gpu::primitive> kernel_launch(
+            new gpu::primitive{[=](void** inputs, void** outputs)
+            {
+                CUDA_RT_SAFE_CALL(cudaMemcpyAsync(inputs[0], outputs[0], size, kind, m_async_stream));
+            }
+        }
+    );
+
+    return this->m_primitive_emitter->register_primitive(kernel_launch, kernel_name.str());
+}
+
+size_t runtime::gpu::CUDAEmitter::build_syncbarrier()
+{
+    std::string hash = "sync_barrier";
+    size_t primitive_index = m_primitive_emitter->lookup(hash);
+    if (primitive_index != std::numeric_limits<size_t>::max())
+    {
+        return primitive_index;
+    }
+
+    std::unique_ptr<gpu::primitive> kernel_launch(
+        new gpu::primitive{[=](void** inputs, void** outputs)
+            {
+                CUDA_RT_SAFE_CALL(cudaStreamSynchronize(m_async_stream));
+            }
+        }
+    );
+
+    return this->m_primitive_emitter->register_primitive(kernel_launch, hash);
+    
 }
 
 size_t runtime::gpu::CUDAEmitter::build_concat(const std::string& dtype,
