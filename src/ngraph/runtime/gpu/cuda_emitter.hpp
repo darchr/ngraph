@@ -52,9 +52,6 @@ namespace ngraph
 
             public:
                 size_t build_memset(const std::string& dtype, uint32_t tensor_size);
-                size_t build_move(
-                        const std::vector<runtime::gpu::GPUTensorWrapper> &args,
-                        const std::vector<runtime::gpu::GPUTensorWrapper> &kernel_outputs);
 
                 size_t build_topk(const std::vector<element::Type>& dtypes,
                                   const NVShape& input_shape,

@@ -389,14 +389,28 @@ void runtime::gpu::GPUExternalFunction::emit_temp_mem_pool_allocation(
             << "char* pool_base_ptr = (char*)ngraph::runtime::gpu::invoke_memory_primitive(ctx, "
             << m_tensor_memory_buffers.at(current_function->get_name()) << ");\n";
 
+        // Check if there is any host allocation
+        if (current_function->get_pmem_pool_size())
+        {
+            m_writer
+                << "char* host_base_ptr = (char*)ngraph::runtime::gpu::invoke_memory_primitive(ctx, "
+                << m_tensor_memory_buffers.at(current_function->get_name() + "_host") << ");\n";
+        }
+
         // Add temporaries to the variable name map
         for (shared_ptr<Node> node : m_function_ordered_ops.at(current_function))
         {
             for (descriptor::Tensor* tensor : node->liveness_new_list)
             {
                 stringstream ss;
-                ss << "((" << tensor->get_element_type().c_type_string() << "*)(pool_base_ptr + "
-                   << tensor->get_pool_offset() << "))";
+                if (tensor->get_pool_number() == 0)
+                {
+                    ss << "((" << tensor->get_element_type().c_type_string() << "*)(pool_base_ptr + "
+                       << tensor->get_pool_offset() << "))";
+                } else {
+                    ss << "((" << tensor->get_element_type().c_type_string() << "*)(host_base_ptr + "
+                       << tensor->get_pool_offset() << "))";
+                }
                 m_variable_name_map[tensor->get_name()] = ss.str();
             }
 
@@ -482,9 +496,15 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                 {
                     shared_ptr<descriptor::Tensor> itv =
                         res->get_inputs().at(0).get_output().get_tensor_ptr();
-                    auto output_name = ss.str();
-                    m_variable_name_map[itv->get_name()] = output_name;
-                    propagate_in_place_output(&(res->get_inputs().at(0).get_output()), output_name);
+
+                    // MARK: Don't do the propagation if the output of this node doesn't
+                    // live in GPU DRAM, which COULD be the case if there's a MOVE involved.
+                    if (itv->get_pool_number() == 0)
+                    {
+                        auto output_name = ss.str();
+                        m_variable_name_map[itv->get_name()] = output_name;
+                        propagate_in_place_output(&(res->get_inputs().at(0).get_output()), output_name);
+                    }
                 }
             }
 
@@ -532,6 +552,7 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                 }
 
                 // Emit operation body
+                m_writer << "std::cout << \"Running: \" << \"" << node->get_name() << "\" << std::endl;\n";
                 auto it = m_node_function_map.find(node.get());
                 if (it == m_node_function_map.end())
                 {
@@ -727,12 +748,15 @@ void runtime::gpu::GPUExternalFunction::propagate_in_place_input(ngraph::descrip
                     {
                         size_t output_index = oi_pair.output;
                         auto& output_tensor = c_op->get_outputs().at(output_index).get_tensor();
+                        auto& input_tensor = it->get_tensor();
+                        if (input_tensor.get_pool_number() == output_tensor.get_pool_number())
+                        {
+                            m_variable_name_map[output_tensor.get_name()] = input_name;
 
-                        m_variable_name_map[output_tensor.get_name()] = input_name;
-
-                        NGRAPH_DEBUG << "GPU codegen: Forwarding " << input_name << " through "
-                                     << output_tensor.get_name();
-                        stack.push_back(&c_op->get_outputs().at(output_index));
+                            NGRAPH_DEBUG << "GPU codegen: Forwarding " << input_name << " through "
+                                         << output_tensor.get_name();
+                            stack.push_back(&c_op->get_outputs().at(output_index));
+                        }
                     }
                 }
             }

@@ -39,6 +39,14 @@ bool runtime::gpu::pass::TensorMemoryReservation::run_on_function(shared_ptr<Fun
         reservation = true;
     }
 
+    size_t host_pool_size = f->get_pmem_pool_size();
+    if (host_pool_size)
+    {
+        size_t pool_idx = m_allocator.reserve_on_host(mem_pool_size);
+        m_memory_buffers.insert({f->get_name() + "_host", pool_idx});
+        reservation = true;
+    }
+
     // constant memory reservation
     for (auto const& node : f->get_ops())
     {
