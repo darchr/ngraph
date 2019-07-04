@@ -53,7 +53,7 @@ namespace ngraph
                 ~CUDAEmitter();
 
             public:
-                size_t build_moveasync(cudaMemcpyKind kind, size_t size);
+                size_t build_moveasync(cudaMemcpyKind& kind, size_t size);
                 size_t build_syncbarrier();
 
                 size_t build_memset(const std::string& dtype, uint32_t tensor_size);

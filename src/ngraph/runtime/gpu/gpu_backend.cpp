@@ -14,6 +14,7 @@
 // limitations under the License.
 //*****************************************************************************
 
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime.h>

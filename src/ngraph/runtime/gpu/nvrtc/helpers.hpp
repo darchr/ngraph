@@ -15,6 +15,7 @@
 //*****************************************************************************
 #pragma once
 
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #include <cuda.h>
 #include <sstream>
 #include <string>

@@ -14,6 +14,7 @@
 // limitations under the License.
 //*****************************************************************************
 
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #include <algorithm>
 #include <cstdlib>
 #include <cublas_v2.h>
@@ -174,7 +175,7 @@ void runtime::gpu::GPUCompiledFunction::compile()
 #else
     pass_manager.register_pass<ngraph::pass::AlgebraicSimplification>();
 #endif
-    pass_manager.register_pass<runtime::gpu::pass::BatchNormCache>();
+    //pass_manager.register_pass<runtime::gpu::pass::BatchNormCache>();
     pass_manager.register_pass<ngraph::pass::LikeReplacement>();
     pass_manager.register_pass<runtime::gpu::pass::GPULayout>(this);
     pass_manager.register_pass<ngraph::pass::AssignLayout<descriptor::layout::DenseTensorLayout>>();

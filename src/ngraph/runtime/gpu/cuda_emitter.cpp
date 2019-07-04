@@ -87,7 +87,7 @@ runtime::gpu::CUDAEmitter::~CUDAEmitter()
 
 // MARK: Async Movement and Synchronization
 size_t runtime::gpu::CUDAEmitter::build_moveasync(
-        cudaMemcpyKind kind,
+        cudaMemcpyKind& kind,
         size_t size)
 {
 
@@ -103,7 +103,9 @@ size_t runtime::gpu::CUDAEmitter::build_moveasync(
     std::unique_ptr<gpu::primitive> kernel_launch(
             new gpu::primitive{[=](void** inputs, void** outputs)
             {
-                CUDA_RT_SAFE_CALL(cudaMemcpyAsync(inputs[0], outputs[0], size, kind, m_async_stream));
+                CUDA_RT_SAFE_CALL(
+                    cudaMemcpyAsync(outputs[0], inputs[0], size, kind, m_async_stream)
+                );
             }
         }
     );
@@ -123,13 +125,15 @@ size_t runtime::gpu::CUDAEmitter::build_syncbarrier()
     std::unique_ptr<gpu::primitive> kernel_launch(
         new gpu::primitive{[=](void** inputs, void** outputs)
             {
-                CUDA_RT_SAFE_CALL(cudaStreamSynchronize(m_async_stream));
+                // Synchronize on the async stream then on the main stream.
+                CUDA_RT_SAFE_CALL(cudaStreamSynchronize(m_async_stream)); 
+                //CUDA_RT_SAFE_CALL(cudaDeviceSynchronize()); 
             }
         }
     );
 
     return this->m_primitive_emitter->register_primitive(kernel_launch, hash);
-    
+
 }
 
 size_t runtime::gpu::CUDAEmitter::build_concat(const std::string& dtype,

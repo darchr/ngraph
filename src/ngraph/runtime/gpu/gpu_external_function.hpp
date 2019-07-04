@@ -92,6 +92,9 @@ namespace ngraph
                 void emit_temp_mem_pool_allocation(std::shared_ptr<Function> current_function);
                 void store_emitted_functions(const std::string& code);
                 std::string emit_op(EMIT_ARGS);
+                std::string emit_sync(GPUCompiledFunction* external_function,
+                                      const std::string& function_name);
+
                 std::string emit_op_as_function(const Node& node, const std::string& function_name);
                 std::string strip_comments(const std::string& s) const;
 
