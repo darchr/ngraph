@@ -18,6 +18,7 @@
 #include <memory>
 #include <vector>
 
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #include <cudnn.h>
 
 #include "ngraph/runtime/gpu/cuda_error_check.hpp"

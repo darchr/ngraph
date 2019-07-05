@@ -36,3 +36,19 @@ extern "C" size_t runtime::gpu::us_stopwatch(GPURuntimeContext* ctx, size_t idx)
 {
     return ctx->stopwatch_pool->get(idx).get_total_microseconds();
 }
+extern "C" cudaEvent_t runtime::gpu::make_barrier(GPURuntimeContext* ctx, bool on_async)
+{
+    if (on_async)
+    {
+        return runtime::gpu::make_event(ctx->async_stream);
+    }
+    else
+    {
+        return runtime::gpu::make_event();
+    }
+}
+extern "C" void runtime::gpu::wait_barrier(cudaEvent_t event)
+{
+    runtime::gpu::wait_event(event);
+}
+

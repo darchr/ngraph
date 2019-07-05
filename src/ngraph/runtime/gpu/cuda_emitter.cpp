@@ -91,7 +91,7 @@ size_t runtime::gpu::CUDAEmitter::build_moveasync(
         size_t size)
 {
 
-    // Check to see if we already compiled this kernle
+    // Check to see if we already compiled this kernel
     std::stringstream kernel_name;
     kernel_name << "moveasync_" << size << "_" << kind;
     size_t primitive_index = m_primitive_emitter->lookup(kernel_name.str());

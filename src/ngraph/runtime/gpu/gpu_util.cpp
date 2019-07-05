@@ -209,6 +209,20 @@ uint32_t runtime::gpu::idiv_ceil(int n, int d)
     return n / d + (n % d > 0);
 }
 
+// MARK
+cudaEvent_t runtime::gpu::make_event(cudaStream_t stream)
+{
+    cudaEvent_t event;
+    cudaEventCreate(&event);
+    cudaEventRecord(event, stream);
+    return event;
+}
+
+void runtime::gpu::wait_event(cudaEvent_t event)
+{
+    CUDA_RT_SAFE_CALL(cudaEventSynchronize(event));
+}
+
 void runtime::gpu::StopWatch::start()
 {
     if (m_active == false)
@@ -217,7 +231,7 @@ void runtime::gpu::StopWatch::start()
         m_active = true;
         cudaEvent_t start;
         cudaEventCreate(&start);
-        cudaEventRecord(start);
+        cudaEventRecord(start, nullptr);
         starts.push_back(start);
     }
 }
@@ -228,7 +242,7 @@ void runtime::gpu::StopWatch::stop()
     {
         cudaEvent_t stop;
         cudaEventCreate(&stop);
-        cudaEventRecord(stop);
+        cudaEventRecord(stop, nullptr);
         stops.push_back(stop);
         m_active = false;
     }

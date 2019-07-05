@@ -16,6 +16,7 @@
 
 #pragma once
 
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #include "ngraph/op/util/op_annotations.hpp"
 #include "ngraph/op/op.hpp"
 #include "ngraph/op/convolution.hpp"

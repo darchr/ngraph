@@ -158,6 +158,9 @@ void runtime::gpu::GPUCompiledFunction::compile()
     //
     // This is because I potentially compile sub programs during the compilation process
     // of the entire program, and the lock is killing that.
+    //
+    // Since I have complete control on my end, I just need to make sure that concurrency
+    // isn't a problem.
     //std::unique_lock<std::mutex> lock(s_compilation);
 
     m_function_name = m_function->get_name();
@@ -175,12 +178,12 @@ void runtime::gpu::GPUCompiledFunction::compile()
 #else
     pass_manager.register_pass<ngraph::pass::AlgebraicSimplification>();
 #endif
-    //pass_manager.register_pass<runtime::gpu::pass::BatchNormCache>();
+    pass_manager.register_pass<runtime::gpu::pass::BatchNormCache>();
     pass_manager.register_pass<ngraph::pass::LikeReplacement>();
     pass_manager.register_pass<runtime::gpu::pass::GPULayout>(this);
     pass_manager.register_pass<ngraph::pass::AssignLayout<descriptor::layout::DenseTensorLayout>>();
     pass_manager.register_pass<ngraph::pass::GetOutputElementElimination>();
-    // Check if there's a jl_callback attached to the function. If so, setup the jl_callvack
+    // Check if there's a jl_callback attached to the function. If so, setup the jl_callback
     // gpu pass
     void* jl_callback = m_function->get_jl_callback();
     std::cout << "Address of jl_callback: " << jl_callback << std::endl;

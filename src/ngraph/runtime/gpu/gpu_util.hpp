@@ -16,6 +16,7 @@
 
 #pragma once
 
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #include <cudnn.h>
 #include <memory>
 #include <vector>
@@ -45,6 +46,10 @@ namespace ngraph
             {
                 return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
             }
+
+            cudaEvent_t make_event(cudaStream_t stream = nullptr);
+            void wait_event(cudaEvent_t event);
+
 
             // This is commented out because it increases the compile time.
             // It should be moved to a debug header.

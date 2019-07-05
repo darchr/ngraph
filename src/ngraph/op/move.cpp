@@ -74,7 +74,7 @@ op::MoveAsync::MoveAsync(const shared_ptr<Node>& input, size_t n, const shared_p
     auto tv = input->get_output_tensor_ptr(m_n);
     get_output_tensor_ptr(0)->set_tensor_layout(tv->get_tensor_layout());
 
-    // Need to manually assign the correct output form the input
+    // Need to manually assign the correct input
     m_inputs.clear();
     m_inputs.emplace_back(this, 0, input->get_outputs().at(m_n));
 }

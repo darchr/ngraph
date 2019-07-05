@@ -81,6 +81,7 @@ runtime::gpu::GPU_Backend::BackendContext::BackendContext()
 
     // register with c-api runtime context
     m_runtime_context->compiled_kernel_pool = new CudaFunctionPool;
+    m_runtime_context->async_stream = m_primitive_emitter->get_cuda_emitter()->get_stream();
 }
 
 void runtime::gpu::GPU_Backend::BackendContext::prepare_runtime_context()

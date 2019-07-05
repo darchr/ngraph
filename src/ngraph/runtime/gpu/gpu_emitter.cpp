@@ -147,6 +147,29 @@ function<std::string(EMIT_ARGS)> runtime::gpu::GPU_Emitter::get_emit_function(co
     return it->second;
 }
 
+// MARK: Synchronization emitters
+std::string runtime::gpu::GPU_Emitter::emit_wait(size_t index, std::string type)
+{
+    std::stringstream ss;
+    ss << "CUDA_RT_SAFE_CALL(cudaEventSynchronize(" << type << "_" << index << "));\n";
+    return ss.str();
+}
+
+std::string runtime::gpu::GPU_Emitter::emit_barrier(size_t index, std::string type)
+{
+    std::stringstream ss;
+    // Determine if this goes on the async stream of the default stream
+    ss << "cudaEvent_t " << type  << "_" << index << ";\n";
+    ss << "CUDA_RT_SAFE_CALL(cudaEventCreate(&" << type << "_" << index << "));\n";
+    ss << "CUDA_RT_SAFE_CALL(cudaEventRecord(" << type << "_" << index;
+    if  (type == "async")
+    {
+        ss << ", ctx->async_stream";
+    }
+    ss << "));\n";
+    return ss.str();
+}
+
 // MARK: Move ops
 std::string runtime::gpu::GPU_Emitter::emit_Move(EMIT_ARGS)
 {

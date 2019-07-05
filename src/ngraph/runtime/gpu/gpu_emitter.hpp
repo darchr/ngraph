@@ -34,6 +34,9 @@ namespace ngraph
             public:
                 static std::function<std::string(EMIT_ARGS)> get_emit_function(const Node& node);
 
+                static std::string emit_wait(size_t index, std::string type);
+                static std::string emit_barrier(size_t index, std::string type);
+
 // This defines a collection of function declarations like this
 // static std::string emit_Abs(EMIT_ARGS);
 // static std::string emit_Acos(EMIT_ARGS);
@@ -66,6 +69,7 @@ namespace ngraph
 
                     return compiled_function->add_to_runtime(ew_index, function_name, args, out);
                 }
+
 
                 static std::string emit_ArgReduce(EMIT_ARGS, cudnnReduceTensorOp_t);
                 static std::string emit_Sum_0(EMIT_ARGS);

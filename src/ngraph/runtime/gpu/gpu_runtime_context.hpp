@@ -16,6 +16,7 @@
 
 #pragma once
 
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #include <cublas_v2.h>
 #include <cudnn.h>
 #include <functional>
@@ -41,6 +42,7 @@ namespace ngraph
             {
                 cudnnHandle_t* cudnn_handle;
                 cublasHandle_t* cublas_handle;
+                cudaStream_t async_stream;
                 gpu::primitive* const* gpu_primitives;
                 const gpu::memory_primitive* gpu_memory_primitives;
                 CudaFunctionPool* compiled_kernel_pool;
@@ -57,6 +59,8 @@ namespace ngraph
             void stop_stopwatch(GPURuntimeContext* ctx, size_t idx);
             size_t count_stopwatch(GPURuntimeContext* ctx, size_t idx);
             size_t us_stopwatch(GPURuntimeContext* ctx, size_t idx);
+            cudaEvent_t make_barrier(GPURuntimeContext* ctx, bool on_async);
+            void wait_barrier(cudaEvent_t event);
             }
         }
     }

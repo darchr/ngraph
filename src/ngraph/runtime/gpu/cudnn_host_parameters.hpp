@@ -18,6 +18,7 @@
 #include <list>
 #include <memory>
 
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #include <cudnn.h>
 
 #include "ngraph/log.hpp"

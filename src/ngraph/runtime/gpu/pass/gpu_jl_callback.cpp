@@ -14,7 +14,7 @@ bool ngraph::runtime::gpu::pass::GPU_JL_Callback::run_on_function(
     {
         if (ngraph::runtime::gpu::can_select_algo(node))
         {
-            std::cout << "Applying Annotation to Node: " << node->get_name() << std::endl;
+            //std::cout << "Applying Annotation to Node: " << node->get_name() << std::endl;
             do_annotation(node.get(), m_context);
         }
     } 

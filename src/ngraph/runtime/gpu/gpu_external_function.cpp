@@ -69,6 +69,7 @@
 #include "ngraph/op/min.hpp"
 #include "ngraph/op/minimum.hpp"
 #include "ngraph/op/multiply.hpp"
+#include "ngraph/op/move.hpp"
 #include "ngraph/op/negative.hpp"
 #include "ngraph/op/not.hpp"
 #include "ngraph/op/not_equal.hpp"
@@ -153,7 +154,7 @@ std::string runtime::gpu::GPUExternalFunction::emit_op(GPUCompiledFunction* exte
     return emit_function(external_function, function_name, node, args, out);
 };
 
-// MARK: Add cuda stream synchronization 
+// MARK: Add cuda stream synchronization
 std::string runtime::gpu::GPUExternalFunction::emit_sync(GPUCompiledFunction* external_function,
                                                          const std::string& function_name)
 {
@@ -517,6 +518,41 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                 }
             }
 
+            // MARK: Since we're using two CUDA streams - 1 to do computation and the other
+            // to perform asynchronous movement - we need to synchronize the streams
+            // correctly.
+            //
+            // The algorithm goes like this:
+            //
+            // For every MoveAsync node, create a cuda event after the async move
+            // If the input to a MoveAsync is NOT a MoveAsync, we need to mark the input
+            // as needing a synchronizing event on the default stream.
+            //
+            // During code generation, we record and emit the appropriate synchronization
+            // barriers.
+            std::map<Node*, size_t> async_sync_barriers;
+            std::map<Node*, size_t> node_sync_barriers;
+
+            size_t async_barriers_count = 0;
+            size_t node_barriers_count = 0;
+            for (shared_ptr<Node> node : m_function_ordered_ops.at(current_function))
+            {
+                auto async = dynamic_pointer_cast<ngraph::op::MoveAsync>(node);
+                if (async)
+                {
+                    // Record an event for this transfer.
+                    async_sync_barriers[node.get()] = async_barriers_count++;
+
+                    // If the input to this node is not a MoveAsync, record the input
+                    // as needing a barrier after it.
+                    std::shared_ptr<Node> input = node->get_inputs().at(0).get_output().get_node();
+                    if (!dynamic_pointer_cast<ngraph::op::MoveAsync>(input))
+                    {
+                        node_sync_barriers[input.get()] = node_barriers_count++;
+                    }
+                }
+            }
+
             for (shared_ptr<Node> node : m_function_ordered_ops.at(current_function))
             {
                 vector<GPUTensorWrapper> in;
@@ -537,7 +573,7 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                     node_output_names.emplace_back(tv->get_name());
                 }
 
-                // Check if this node has an algo. If so, add its workspace tensor to the 
+                // Check if this node has an algo. If so, add its workspace tensor to the
                 // list of inputs.
                 //
                 // Could segfault so YOLO
@@ -558,6 +594,65 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                     m_writer << join(parameter_nodes);
                     m_writer << ")\n";
                     emit_debug_function_entry(node.get());
+                }
+
+                // Check if this operation needs to synchronize before executing.
+                //
+                // Since traversal happens in operation order, every time we wait for an
+                // event, we can remove that event from the `barrier` map.
+                if (dynamic_pointer_cast<ngraph::op::MoveAsync>(node))
+                {
+                    // If this is an asynchronous move, make sure the operations producing
+                    // the value this operation moves has completed.
+                    auto input = node->get_inputs().at(0).get_output().get_node();
+                    auto barrier_it = node_sync_barriers.find(input.get());
+                    if (barrier_it != node_sync_barriers.end())
+                    {
+
+                        m_writer << "runtime::gpu::wait_barrier(event_sync_"
+                                 << barrier_it->second
+                                 << ");\n";
+                        // Remove all entries with a number lower than or equal to this 
+                        // event. The ordering semantics of CUDA will make sure things still
+                        // make sense.
+                        size_t second = barrier_it->second;
+                        for (auto it = node_sync_barriers.begin(); it != node_sync_barriers.end(); )
+                        {
+                            if (it->second <= second)
+                            {
+                                it = node_sync_barriers.erase(it);
+                            } else {
+                                ++it;
+                            }
+                        }
+                    }
+                } else {
+                    // For all inputs that come from a MoveAsync, need to synchronize on
+                    // the event if synchronization hasn't already happened
+                    for (const descriptor::Input& input: node->get_inputs())
+                    {
+                        auto input_node = input.get_output().get_node();
+                        if (dynamic_pointer_cast<ngraph::op::MoveAsync>(input_node))
+                        {
+                            auto barrier_it = async_sync_barriers.find(input_node.get());
+                            if (barrier_it != async_sync_barriers.end())
+                            {
+                                m_writer << "runtime::gpu::wait_barrier(event_async_"
+                                         << barrier_it->second
+                                         << ");\n";
+                                size_t second = barrier_it->second;
+                                for (auto it = async_sync_barriers.begin(); it != async_sync_barriers.end(); )
+                                {
+                                    if (it->second <= second)
+                                    {
+                                        it = async_sync_barriers.erase(it);
+                                    } else {
+                                        ++it;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Emit operation body
@@ -584,17 +679,30 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                     m_writer << func_name << "(" << join(names) << ");\n";
                 }
 
-                // Determine if we need to put a synchronization barrier before this op
-                if (node->get_sync())
-                {
-                    m_writer << "\n// Emitting Sync Function\n";
-                    m_writer << emit_sync(this, current_function->get_name());
-                }
-
                 // Emit operation epilogue
                 if (!node->is_parameter() && !node->is_constant())
                 {
                     emit_debug_function_exit(node.get());
+                }
+
+                // MARK: Emit post operation barriers
+                if (std::dynamic_pointer_cast<ngraph::op::MoveAsync>(node))
+                {
+                    auto barrier_it = async_sync_barriers.find(node.get());
+                    if (barrier_it != async_sync_barriers.end())
+                    {
+                        m_writer << "cudaEvent_t event_async_"
+                                 << barrier_it->second
+                                 << " = runtime::gpu::make_barrier(ctx, true);\n";
+                    }
+                } else {
+                    auto barrier_it = node_sync_barriers.find(node.get());
+                    if (barrier_it != node_sync_barriers.end())
+                    {
+                        m_writer << "cudaEvent_t event_sync_"
+                                 << barrier_it->second
+                                 << " = runtime::gpu::make_barrier(ctx, false);\n";
+                    }
                 }
             }
         }

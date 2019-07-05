@@ -1,3 +1,4 @@
+#define CUDA_API_PER_THREAD_DEFAULT_STREAM
 #include "node.hpp"
 #include "op/convolution.hpp"
 #include "runtime/gpu/cudnn_descriptors.hpp"

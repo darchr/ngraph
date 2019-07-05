@@ -196,6 +196,8 @@ namespace ngraph
                 void debug_sync();
                 void sync();
 
+                cudaStream_t get_stream() { return m_async_stream; } 
+
             private:
                 CUDAEmitter(GPUPrimitiveEmitter* emitter,
                             GPURuntimeContext* ctx,
