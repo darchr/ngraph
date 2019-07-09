@@ -218,9 +218,10 @@ cudaEvent_t runtime::gpu::make_event(cudaStream_t stream)
     return event;
 }
 
-void runtime::gpu::wait_event(cudaEvent_t event)
+void runtime::gpu::wait_event(cudaStream_t stream, cudaEvent_t event)
 {
-    CUDA_RT_SAFE_CALL(cudaEventSynchronize(event));
+    //CUDA_RT_SAFE_CALL(cudaEventSynchronize(event));
+    CUDA_RT_SAFE_CALL(cudaStreamWaitEvent(stream, event, 0));
 }
 
 void runtime::gpu::StopWatch::start()

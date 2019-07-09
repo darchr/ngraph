@@ -106,7 +106,8 @@ namespace ngraph
                     const Strides& window_movement_strides,
                     const Strides& window_dilation_strides,
                     const Shape& padding_below,
-                    const algo_search find_algo = algo_search::NONE);
+                    const algo_search find_algo = algo_search::NONE,
+                    const cudnnConvolutionBwdDataAlgo_t algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0);
 
                 size_t build_convolution_backward_filter(
                     const std::string& dtype,
@@ -116,7 +117,8 @@ namespace ngraph
                     const Strides& window_movement_strides,
                     const Strides& window_dilation_strides,
                     const Shape& padding_below,
-                    const algo_search find_algo = algo_search::NONE);
+                    const algo_search find_algo = algo_search::NONE,
+                    const cudnnConvolutionBwdFilterAlgo_t algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0);
 
                 size_t build_reduce_forward(const cudnnReduceTensorOp_t& reduce_op,
                                             const std::vector<element::Type>& dtypes,

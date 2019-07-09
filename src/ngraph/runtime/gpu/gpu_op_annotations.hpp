@@ -70,46 +70,65 @@ namespace ngraph
                 {
                     m_context = context;
                 }
-
-                bool is_configured() { return m_configured; }
             private:
                 cudnnConvolutionFwdAlgo_t m_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
                 std::shared_ptr<ngraph::descriptor::Tensor>  m_workspace_tensor;
                 std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> m_context;
-                bool m_configured = false;
             };
 
-            // class ConvBwdDataAnnotations : public GPUOpAnnotations
-            // {
-            // public:
-            //     ~ConvBwdDataAnnotations() = default;
+            // BwdData
+            class ConvBwdDataAnnotations : public GPUOpAnnotations
+            {
+            public:
+                ~ConvBwdDataAnnotations() = default;
 
-            //     bool is_configured() { return m_is_configured; }
-            //     cudnnConvolutionBwdDataAlgo_t get_algo() { return m_algo; }
-            //     void set_algo(cudnnConvolutionBwdDataAlgo_t algo) { m_algo = algo; }
-            //     size_t get_workspace_offset() { return m_workspace_offset; }
-            //     void set_workspace_offset(size_t workspace_offset) { m_workspace_offset = workspace_offset; }
-            // private:
-            //     bool m_is_configured = false;
-            //     cudnnConvolutionBwdDataAlgo_t m_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
-            //     size_t m_workspace_offset = -1;
-            // };
+                cudnnConvolutionBwdDataAlgo_t get_algo() { return m_algo; }
+                void set_algo(cudnnConvolutionBwdDataAlgo_t algo) { m_algo = algo; }
+                std::shared_ptr<ngraph::descriptor::Tensor> get_workspace_tensor() { return m_workspace_tensor; }
+                void set_workspace_tensor(std::shared_ptr<ngraph::descriptor::Tensor> tensor) { m_workspace_tensor = tensor; }
 
-            // class ConvBwdFilterAnnotations : public GPUOpAnnotations
-            // {
-            // public:
-            //     ~ConvBwdFilterAnnotations() = default;
+                std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> get_context()
+                {
+                    return m_context;
+                }
 
-            //     bool is_configured() { return m_is_configured; }
-            //     cudnnConvolutionBwdFilterAlgo_t get_algo() { return m_algo; }
-            //     void set_algo(cudnnConvolutionBwdFilterAlgo_t algo) { m_algo = algo; }
-            //     size_t get_workspace_offset() { return m_workspace_offset; }
-            //     void set_workspace_offset(size_t workspace_offset) { m_workspace_offset = workspace_offset; }
-            // private:
-            //     bool m_is_configured = false;
-            //     cudnnConvolutionBwdFilterAlgo_t m_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
-            //     size_t m_workspace_offset = -1;
-            // };
+                void clear_context() { m_context = nullptr; }
+                void set_context(std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> context)
+                {
+                    m_context = context;
+                }
+            private:
+                cudnnConvolutionBwdDataAlgo_t m_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+                std::shared_ptr<ngraph::descriptor::Tensor>  m_workspace_tensor;
+                std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> m_context;
+            };
+
+            // BwdFilter
+            class ConvBwdFilterAnnotations : public GPUOpAnnotations
+            {
+            public:
+                ~ConvBwdFilterAnnotations() = default;
+
+                cudnnConvolutionBwdFilterAlgo_t get_algo() { return m_algo; }
+                void set_algo(cudnnConvolutionBwdFilterAlgo_t algo) { m_algo = algo; }
+                std::shared_ptr<ngraph::descriptor::Tensor> get_workspace_tensor() { return m_workspace_tensor; }
+                void set_workspace_tensor(std::shared_ptr<ngraph::descriptor::Tensor> tensor) { m_workspace_tensor = tensor; }
+
+                std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> get_context()
+                {
+                    return m_context;
+                }
+
+                void clear_context() { m_context = nullptr; }
+                void set_context(std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> context)
+                {
+                    m_context = context;
+                }
+            private:
+                cudnnConvolutionBwdFilterAlgo_t m_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
+                std::shared_ptr<ngraph::descriptor::Tensor>  m_workspace_tensor;
+                std::shared_ptr<ngraph::runtime::gpu::GPU_Backend::BackendContext> m_context;
+            };
 
             // Forwarding types for accessing annotations
             template<typename T> struct FwdAnnotationType;
@@ -126,6 +145,57 @@ namespace ngraph
                 typedef cudnnConvolutionFwdAlgo_t type;
             };
 
+            template<> struct FwdAnnotationType<const ngraph::op::Convolution>
+            {
+                typedef ConvFwdAnnotations type;
+            };
+
+            template<> struct FwdAlgoType<const ngraph::op::Convolution>
+            {
+                typedef cudnnConvolutionFwdAlgo_t type;
+            };
+
+            // Forwarding for backward convolutions
+            template<> struct FwdAnnotationType<ngraph::op::ConvolutionBackpropData>
+            {
+                typedef ConvBwdDataAnnotations type;
+            };
+
+            template<> struct FwdAlgoType<ngraph::op::ConvolutionBackpropData>
+            {
+                typedef cudnnConvolutionBwdDataAlgo_t type;
+            };
+
+            template<> struct FwdAnnotationType<const ngraph::op::ConvolutionBackpropData>
+            {
+                typedef ConvBwdDataAnnotations type;
+            };
+
+            template<> struct FwdAlgoType<const ngraph::op::ConvolutionBackpropData>
+            {
+                typedef cudnnConvolutionBwdDataAlgo_t type;
+            };
+
+            // Forwarding for backward convolutions filter
+            template<> struct FwdAnnotationType<ngraph::op::ConvolutionBackpropFilters>
+            {
+                typedef ConvBwdFilterAnnotations type;
+            };
+
+            template<> struct FwdAlgoType<ngraph::op::ConvolutionBackpropFilters>
+            {
+                typedef cudnnConvolutionBwdFilterAlgo_t type;
+            };
+
+            template<> struct FwdAnnotationType<const ngraph::op::ConvolutionBackpropFilters>
+            {
+                typedef ConvBwdFilterAnnotations type;
+            };
+
+            template<> struct FwdAlgoType<const ngraph::op::ConvolutionBackpropFilters>
+            {
+                typedef cudnnConvolutionBwdFilterAlgo_t type;
+            };
 
             /////
             ///// Query Functions
@@ -151,10 +221,25 @@ namespace ngraph
             template<>
             inline bool has_algo(Node* node)
             {
+                // Forward Convolution
                 auto op_convolution = dynamic_cast<ngraph::op::Convolution*>(node);
                 if (op_convolution)
                 {
                     return has_algo(op_convolution);
+                }
+
+                // Backward Data Convolution
+                auto op_bwd_data_convolution = dynamic_cast<ngraph::op::ConvolutionBackpropData*>(node);
+                if (op_bwd_data_convolution)
+                {
+                    return has_algo(op_bwd_data_convolution);
+                }
+
+                // Backward Filter Convolution
+                auto op_bwd_filter_convolution = dynamic_cast<ngraph::op::ConvolutionBackpropFilters*>(node);
+                if (op_bwd_filter_convolution)
+                {
+                    return has_algo(op_bwd_filter_convolution);
                 }
                 return false;
             }
@@ -182,6 +267,16 @@ namespace ngraph
                 if (op_convolution)
                 {
                     return do_annotation(op_convolution, ctx);
+                }
+                auto op_convolution_bwd_data = dynamic_cast<ngraph::op::ConvolutionBackpropData*>(node);
+                if (op_convolution_bwd_data)
+                {
+                    return do_annotation(op_convolution_bwd_data, ctx);
+                }
+                auto op_convolution_bwd_filters = dynamic_cast<ngraph::op::ConvolutionBackpropFilters*>(node);
+                if (op_convolution_bwd_filters)
+                {
+                    return do_annotation(op_convolution_bwd_filters, ctx);
                 }
                 return false;
             }
@@ -216,6 +311,16 @@ namespace ngraph
                 {
                     return get_workspace_tensor(op_convolution);
                 }
+                auto op_convolution_bwd_data = dynamic_cast<ngraph::op::ConvolutionBackpropData*>(node);
+                if (op_convolution_bwd_data)
+                {
+                    return get_workspace_tensor(op_convolution_bwd_data);
+                }
+                auto op_convolution_bwd_filters = dynamic_cast<ngraph::op::ConvolutionBackpropFilters*>(node);
+                if (op_convolution_bwd_filters)
+                {
+                    return get_workspace_tensor(op_convolution_bwd_filters);
+                }
                 // If everything fails, return a nullptr
                 return {};
             }
@@ -227,6 +332,7 @@ namespace ngraph
                                              const cudnnDataType_t data_type,
                                              const cudnnTensorFormat_t tensor_format, 
                                              const std::shared_ptr<runtime::gpu::CUDNNDescriptors> descriptors);
+
 
             cudnnDataType_t get_cudnn_datatype(std::string dtype);
             cudnnDataType_t get_cudnn_datatype(const element::Type& dtype);

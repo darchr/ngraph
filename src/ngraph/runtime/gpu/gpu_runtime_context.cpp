@@ -47,8 +47,19 @@ extern "C" cudaEvent_t runtime::gpu::make_barrier(GPURuntimeContext* ctx, bool o
         return runtime::gpu::make_event();
     }
 }
-extern "C" void runtime::gpu::wait_barrier(cudaEvent_t event)
+extern "C" void runtime::gpu::wait_barrier(GPURuntimeContext* ctx, 
+        cudaEvent_t event, 
+        bool wait_on_async)
 {
-    runtime::gpu::wait_event(event);
+    if (wait_on_async)
+    {
+        // Make the default stream wait for the asynchronous stream
+        runtime::gpu::wait_event(nullptr, event);
+    }
+    else
+    {
+        runtime::gpu::wait_event(ctx->async_stream, event);
+    }
+    //runtime::gpu::wait_event(event);
 }
 

@@ -144,17 +144,6 @@ namespace ngraph
                 }
             }
         }
-        //std::cout << "Done Pre-Affinity Node List" << std::endl;
-
-        // for (auto a = node_dependency_count.begin() ; a != node_dependency_count.end(); a++ )
-        // {
-        //     auto _node = a->first;
-        //     size_t count = a->second;
-        //     if (count != 0)
-        //     {
-        //         std::cout << "Dangling Node: " << _node->get_name() << std::endl;
-        //     }
-        // }
 
         NGRAPH_ASSERT(nodes.size() == result_list.size());
 
@@ -196,16 +185,20 @@ namespace ngraph
                             != associates.end();
                     };
 
-                    auto pos = std::find_if(result_list.begin(), result_list.end(), predicate);
-                    NGRAPH_ASSERT(pos != result_list.end());
-
-                    // Splice this node to just after the found node.
-                    if (node->get_affinity() == AFFINITY_INPUT)
+                    // If this is an input affinity, do a reverse search to make this happen
+                    // as soon as possible after all associates
+                    if (node->get_affinity() == AFFINITY_INPUT) 
                     {
-                        pos++;
-                    }
-                    result_list.splice(pos, result_list, it);
+                        auto pos_rev = std::find_if(result_list.rbegin(), result_list.rend(), predicate);
+                        NGRAPH_ASSERT(pos_rev != result_list.rend());
 
+                        auto pos = std::find(result_list.begin(), result_list.end(), *pos_rev);
+                        result_list.splice(++pos, result_list, it);
+                    } else {
+                        auto pos = std::find_if(result_list.begin(), result_list.end(), predicate);
+                        NGRAPH_ASSERT(pos != result_list.end());
+                        result_list.splice(pos, result_list, it);
+                    }
                     //std::cout << "C++: Applying Node Affinity: "
                     //          << node->get_name() << " to "
                     //          << associate_name

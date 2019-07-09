@@ -60,7 +60,7 @@ namespace ngraph
             size_t count_stopwatch(GPURuntimeContext* ctx, size_t idx);
             size_t us_stopwatch(GPURuntimeContext* ctx, size_t idx);
             cudaEvent_t make_barrier(GPURuntimeContext* ctx, bool on_async);
-            void wait_barrier(cudaEvent_t event);
+            void wait_barrier(GPURuntimeContext* ctx, cudaEvent_t event, bool wait_on_async);
             }
         }
     }

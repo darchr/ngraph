@@ -48,7 +48,7 @@ namespace ngraph
             }
 
             cudaEvent_t make_event(cudaStream_t stream = nullptr);
-            void wait_event(cudaEvent_t event);
+            void wait_event(cudaStream_t stream, cudaEvent_t event);
 
 
             // This is commented out because it increases the compile time.

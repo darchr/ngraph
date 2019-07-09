@@ -15,10 +15,12 @@ namespace ngraph
                 public:
                     GPU_JL_Callback(
                             std::shared_ptr<GPU_Backend::BackendContext> context,
-                            void (*jl_callback)()
+                            void (*jl_callback)(),
+                            bool prepare
                             )
                         : m_context(context)
                         , m_jl_callback(jl_callback)
+                        , m_prepare(prepare)
                     {
                     }
 
@@ -26,6 +28,7 @@ namespace ngraph
                         run_on_function(const std::shared_ptr<ngraph::Function> f);
 
                 private:
+                    bool m_prepare = true;
                     std::shared_ptr<GPU_Backend::BackendContext> m_context;
                     void (*m_jl_callback)();
                 };

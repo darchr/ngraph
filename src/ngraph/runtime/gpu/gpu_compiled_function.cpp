@@ -186,18 +186,24 @@ void runtime::gpu::GPUCompiledFunction::compile()
     // Check if there's a jl_callback attached to the function. If so, setup the jl_callback
     // gpu pass
     void* jl_callback = m_function->get_jl_callback();
-    std::cout << "Address of jl_callback: " << jl_callback << std::endl;
     if (jl_callback) 
     {
-        std::cout << "Setting up JL Callback pass" << std::endl;
         pass_manager.register_pass<runtime::gpu::pass::GPU_JL_Callback>(
             m_shared_context,
-            reinterpret_cast<void (*)()>(jl_callback)
+            reinterpret_cast<void (*)()>(jl_callback),
+            true
         );
     }
     pass_manager.register_pass<ngraph::runtime::gpu::pass::GPUMemoryLayout>(get_memory_alignment());
-    //pass_manager.register_pass<ngraph::pass::Liveness>();
-    //pass_manager.register_pass<ngraph::pass::MemoryLayout>(get_memory_alignment());
+    // Call the callback again - for doing post memory-layout analysis
+    if (jl_callback)
+    {
+        pass_manager.register_pass<runtime::gpu::pass::GPU_JL_Callback>(
+            m_shared_context,
+            reinterpret_cast<void (*)()>(jl_callback),
+            false
+        );
+    }
     pass_manager.register_pass<runtime::gpu::pass::TensorMemoryReservation>(
         *allocator, m_tensor_memory_buffers);
     string dump_filename = file_util::path_join(get_output_dir(), m_function_name + "_ops.txt");

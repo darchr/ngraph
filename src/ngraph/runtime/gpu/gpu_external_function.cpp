@@ -154,13 +154,6 @@ std::string runtime::gpu::GPUExternalFunction::emit_op(GPUCompiledFunction* exte
     return emit_function(external_function, function_name, node, args, out);
 };
 
-// MARK: Add cuda stream synchronization
-std::string runtime::gpu::GPUExternalFunction::emit_sync(GPUCompiledFunction* external_function,
-                                                         const std::string& function_name)
-{
-    return GPU_Emitter::emit_SyncBarrier(external_function, function_name, {}, {}, {});
-}
-
 runtime::gpu::GPUExternalFunction::GPUExternalFunction(
     const shared_ptr<ngraph::Function>& function,
     const std::shared_ptr<GPU_Backend::BackendContext>& shared_context)
@@ -605,25 +598,29 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                     // If this is an asynchronous move, make sure the operations producing
                     // the value this operation moves has completed.
                     auto input = node->get_inputs().at(0).get_output().get_node();
-                    auto barrier_it = node_sync_barriers.find(input.get());
-                    if (barrier_it != node_sync_barriers.end())
+                    if (!dynamic_pointer_cast<ngraph::op::MoveAsync>(input))
                     {
-
-                        m_writer << "runtime::gpu::wait_barrier(event_sync_"
-                                 << barrier_it->second
-                                 << ");\n";
-                        // Remove all entries with a number lower than or equal to this 
-                        // event. The ordering semantics of CUDA will make sure things still
-                        // make sense.
-                        size_t second = barrier_it->second;
-                        for (auto it = node_sync_barriers.begin(); it != node_sync_barriers.end(); )
+                        auto barrier_it = node_sync_barriers.find(input.get());
+                        NGRAPH_ASSERT(barrier_it != node_sync_barriers.end());
+                        if (barrier_it != node_sync_barriers.end())
                         {
-                            if (it->second <= second)
-                            {
-                                it = node_sync_barriers.erase(it);
-                            } else {
-                                ++it;
-                            }
+
+                            m_writer << "runtime::gpu::wait_barrier(ctx, event_sync_"
+                                     << barrier_it->second
+                                     << ", false);\n";
+                            // Remove all entries with a number lower than or equal to this 
+                            // event. The ordering semantics of CUDA will make sure things still
+                            // make sense.
+                            //size_t second = barrier_it->second;
+                            //for (auto it = node_sync_barriers.begin(); it != node_sync_barriers.end(); )
+                            //{
+                            //    if (it->second <= second)
+                            //    {
+                            //        it = node_sync_barriers.erase(it);
+                            //    } else {
+                            //        ++it;
+                            //    }
+                            //}
                         }
                     }
                 } else {
@@ -635,21 +632,22 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                         if (dynamic_pointer_cast<ngraph::op::MoveAsync>(input_node))
                         {
                             auto barrier_it = async_sync_barriers.find(input_node.get());
+                            NGRAPH_ASSERT(barrier_it != async_sync_barriers.end());
                             if (barrier_it != async_sync_barriers.end())
                             {
-                                m_writer << "runtime::gpu::wait_barrier(event_async_"
+                                m_writer << "runtime::gpu::wait_barrier(ctx, event_async_"
                                          << barrier_it->second
-                                         << ");\n";
-                                size_t second = barrier_it->second;
-                                for (auto it = async_sync_barriers.begin(); it != async_sync_barriers.end(); )
-                                {
-                                    if (it->second <= second)
-                                    {
-                                        it = async_sync_barriers.erase(it);
-                                    } else {
-                                        ++it;
-                                    }
-                                }
+                                         << ", true);\n";
+                                //size_t second = barrier_it->second;
+                                //for (auto it = async_sync_barriers.begin(); it != async_sync_barriers.end(); )
+                                //{
+                                //    if (it->second <= second)
+                                //    {
+                                //        it = async_sync_barriers.erase(it);
+                                //    } else {
+                                //        ++it;
+                                //    }
+                                //}
                             }
                         }
                     }

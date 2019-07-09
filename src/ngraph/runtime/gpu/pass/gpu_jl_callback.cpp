@@ -9,27 +9,21 @@
 bool ngraph::runtime::gpu::pass::GPU_JL_Callback::run_on_function(
         std::shared_ptr<ngraph::Function> f)
 {
-    // On each of the nodes in the graph, attach op annotations if needed
-    for (auto node : f->get_ordered_ops())
+    if (m_prepare)
     {
-        if (ngraph::runtime::gpu::can_select_algo(node))
+        // On each of the nodes in the graph, attach op annotations if needed
+        for (auto node : f->get_ordered_ops())
         {
-            //std::cout << "Applying Annotation to Node: " << node->get_name() << std::endl;
-            do_annotation(node.get(), m_context);
-        }
-    } 
+            if (ngraph::runtime::gpu::can_select_algo(node))
+            {
+                //std::cout << "Applying Annotation to Node: " << node->get_name() << std::endl;
+                do_annotation(node.get(), m_context);
+            }
+        } 
+    }
 
     // Invoke the JL callback!!
     (m_jl_callback)();
-
-    // TODO: Clean up the references to the backend context
-    // for (auto node : f->get_ordered_ops())
-    // {
-    //     if (has_algo(node.get()))
-    //     {
-    //         do_annotation(node.get(), m_context);
-    //     }
-    // }
 
     return false;
 }
