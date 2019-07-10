@@ -36,30 +36,17 @@ extern "C" size_t runtime::gpu::us_stopwatch(GPURuntimeContext* ctx, size_t idx)
 {
     return ctx->stopwatch_pool->get(idx).get_total_microseconds();
 }
-extern "C" cudaEvent_t runtime::gpu::make_barrier(GPURuntimeContext* ctx, bool on_async)
-{
-    if (on_async)
-    {
-        return runtime::gpu::make_event(ctx->async_stream);
-    }
-    else
-    {
-        return runtime::gpu::make_event();
-    }
-}
-extern "C" void runtime::gpu::wait_barrier(GPURuntimeContext* ctx, 
-        cudaEvent_t event, 
+extern "C" void runtime::gpu::wait_barrier(
+        GPURuntimeContext* ctx, 
         bool wait_on_async)
 {
     if (wait_on_async)
     {
-        // Make the default stream wait for the asynchronous stream
-        runtime::gpu::wait_event(nullptr, event);
+        runtime::gpu::wait_on_stream(ctx->async_stream);
     }
     else
     {
-        runtime::gpu::wait_event(ctx->async_stream, event);
+        runtime::gpu::wait_on_stream(nullptr);
     }
-    //runtime::gpu::wait_event(event);
 }
 
