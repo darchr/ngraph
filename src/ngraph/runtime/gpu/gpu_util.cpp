@@ -210,7 +210,7 @@ uint32_t runtime::gpu::idiv_ceil(int n, int d)
 }
 
 // MARK
-void runtime::gpu::wait_on_stream(cudaStream_t stream)//, cudaEvent_t event)
+void runtime::gpu::wait_on_stream(cudaStream_t stream)
 {
     CUDA_RT_SAFE_CALL(cudaStreamSynchronize(stream)); 
 }

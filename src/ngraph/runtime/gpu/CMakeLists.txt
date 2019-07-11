@@ -90,7 +90,8 @@ if (NGRAPH_GPU_ENABLE)
         set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};
             -gencode=arch=compute_62,code=sm_62;
             -gencode=arch=compute_70,code=sm_70;
-            -gencode=arch=compute_70,code=compute_70)
+            -gencode=arch=compute_70,code=compute_70;
+            -gencode=arch=compute_75,code=sm_75)
     endif()
 
     set (DO_CUDA_COMPILE FALSE)

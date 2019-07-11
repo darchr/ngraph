@@ -156,6 +156,10 @@ runtime::gpu::GPU_Executable::GPU_Executable(shared_ptr<Function> func, bool ena
     set_parameters_and_results(*func);
 }
 
+runtime::gpu::GPU_Executable::~GPU_Executable()
+{
+}
+
 void runtime::gpu::GPU_Executable::initialize_io(void** target,
                                                  const vector<shared_ptr<runtime::Tensor>>& source)
 {
