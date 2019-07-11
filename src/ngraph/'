@@ -468,8 +468,8 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
             // alocate temp memory pool
             emit_temp_mem_pool_allocation(current_function);
 
-            // TIMER: emit CPU Timer for debugging
-            //m_writer << "Timestamp start_ts;\n";
+            // emit CPU Timer for debugging
+            m_writer << "Timestamp start_ts;\n";
 
             // Add inputs to the variable name map
             size_t arg_index = 0;
@@ -573,7 +573,7 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                 }
 
                 // TIMER: Begin Timer
-                //m_writer << "start_ts = Clock::now();\n";
+                m_writer << "start_ts = Clock::now();\n";
 
                 // Emit operation body
                 //m_writer << "std::cout << \"Running: \" << \"" << node->get_name() << "\" << std::endl;\n";
@@ -615,9 +615,10 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                 }
 
                 // TIMER: Synchronize and stop timer.
-                //m_writer << "runtime::gpu::wait_barrier(ctx, false);\n"; 
-                //m_writer << "std::cout << \"Time: " << node->get_name() << " -- \" << "
-                //         << "(std::chrono::duration_cast<Timescale>(Clock::now() - start_ts)).count() << std::endl;\n";
+                //m_writer << "cudaStreamSynchronize(nullptr);\n";
+                m_writer << "runtime::gpu::wait_barrier(ctx, false);\n"; 
+                m_writer << "std::cout << \"Time: " << node->get_name() << " -- \" << "
+                         << "(std::chrono::duration_cast<Timescale>(Clock::now() - start_ts)).count();\n";
 
                 previous_node = node;
             }

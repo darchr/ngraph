@@ -50,7 +50,7 @@ namespace ngraph
                 GPUInternalFunction(
                     const std::shared_ptr<ngraph::Function>& function,
                     const std::shared_ptr<GPU_Backend::BackendContext>& shared_context);
-                virtual ~GPUInternalFunction();
+                virtual ~GPUInternalFunction() override;
 
                 virtual std::string
                     add_to_runtime(size_t primitive_index,

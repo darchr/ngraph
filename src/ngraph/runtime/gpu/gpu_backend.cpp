@@ -131,7 +131,9 @@ shared_ptr<runtime::Executable> runtime::gpu::GPU_Backend::compile(shared_ptr<Fu
     else
     {
         rc = make_shared<GPU_Executable>(func, timing_enable);
-        m_exec_map.insert({func, rc});
+        // MARK:Don't insert into the map so executables get cleaned up when they
+        // go out of scope
+        //m_exec_map.insert({func, rc});
     }
     return rc;
 }
