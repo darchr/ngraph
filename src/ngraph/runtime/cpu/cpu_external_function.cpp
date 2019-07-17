@@ -980,7 +980,7 @@ using namespace ngraph::runtime;
                     // Save the node name to the timing map so we can reconstruct the time
                     // the copy actually took.
                     async_timing_map[overlaps[i]->get_name()] = async_timing_count;
-                    writer << "async_move_times[" << async_timing_count++ << "] = " 
+                    writer << "async_move_times[" << async_timing_count++ << "] = "
                            << "(std::chrono::duration_cast<cpu::Timescale>(cpu::Clock::now() "
                            << "- async_start_ts)).count();\n";
                 }
@@ -1118,7 +1118,7 @@ using namespace ngraph::runtime;
                 writer.indent++;
                 for (auto output_name : node_output_names)
                 {
-                    writer << "t_en[" << tensor_index_map[output_name] << "] = false;\n";
+                    writer << "t_en[" << tensor_index_map[output_name] << "] = true;\n";
                 }
                 writer.indent--;
                 writer << "}\n";

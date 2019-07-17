@@ -288,10 +288,6 @@ namespace ngraph
         const std::vector<std::string>& get_associates() const { return m_associates; }
         void add_associate(std::string associate) { m_associates.push_back(associate); }
 
-        void set_sync() { m_needs_sync = true; }
-        void clear_sync() { m_needs_sync = false; }
-        bool get_sync() { return m_needs_sync; }
-
     protected:
         std::set<std::shared_ptr<Node>> m_control_dependencies;
         void set_output_size(size_t n);
@@ -306,11 +302,6 @@ namespace ngraph
         std::unordered_map<Node*, autodiff::Adjoints> m_adjoint_map;
         Placement m_placement = Placement::DEFAULT;
         size_t m_placement_index = placement_invalid;
-
-        // MARK: edits below this line
-
-        // Flag to indicate if a synchronization barrier needs to be placed before this node.
-        bool m_needs_sync = false;
 
         /////
         ///// Affinities
