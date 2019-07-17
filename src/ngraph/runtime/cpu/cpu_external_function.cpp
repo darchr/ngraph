@@ -1036,7 +1036,9 @@ using namespace ngraph::runtime;
             // Op Control
             if (!node->is_parameter() && !node->is_constant())
             {
-                writer << "if (ctx->first_iteration ";
+                // MARK: Since I disabled caching, we always have to execute every
+                // one of these functions for safety purposes.
+                writer << "if (1 || ctx->first_iteration ";
                 for (const descriptor::Input& input : node->get_inputs())
                 {
                     const descriptor::Output& output = input.get_output();
