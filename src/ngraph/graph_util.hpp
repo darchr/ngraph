@@ -17,6 +17,7 @@
 #pragma once
 
 #include <deque>
+#include <algorithm>
 #include <functional>
 #include <list>
 #include <memory>
@@ -67,6 +68,12 @@ namespace ngraph
         std::unordered_map<ngraph::Node*, std::shared_ptr<ngraph::Node>> node_map;
         std::unordered_map<ngraph::Node*, std::set<Node*>> control_deps_users;
 
+        // Function for comparing priority of two nodes
+        //
+        // use >= so that lower priority numbers get interpreted as the "highest" in the 
+        // heap and will thus be returned first.
+        auto comp = [](Node* a, Node*b){ return a->get_priority() >= b->get_priority(); };
+
         for (auto node : nodes)
         {
             //build an equivalent of node->get_users() but for control dependencies
@@ -89,12 +96,16 @@ namespace ngraph
             }
         }
 
+        // Make `independent_nodes` into a heap
+        std::make_heap(independent_nodes.begin(), independent_nodes.end(), comp); 
+
         std::list<std::shared_ptr<ngraph::Node>> result_list;
         while (independent_nodes.size() > 0)
         {
-            auto independent_node = independent_nodes.front();
+            std::pop_heap(independent_nodes.begin(), independent_nodes.end(), comp);
+            auto independent_node = independent_nodes.back();
             result_list.push_back(node_map[independent_node]);
-            independent_nodes.pop_front();
+            independent_nodes.pop_back();
 
             //std::cout << "Processing Node: " << independent_node->get_name() << ": " << independent_node << std::endl;
 
@@ -109,6 +120,7 @@ namespace ngraph
                     if (count == 0)
                     {
                         independent_nodes.push_back(user);
+                        std::push_heap(independent_nodes.begin(), independent_nodes.end(), comp);
                     }
                 }
             }
@@ -119,29 +131,14 @@ namespace ngraph
                 if (cdit != control_deps_users.end())
                     for (auto cd_user : cdit->second)
                     {
-                        //std::cout << "    Control Dep: " << cd_user->get_name() << ": " << cd_user << std::endl;
                         node_dependency_count[cd_user] -= 1;
                         size_t count = node_dependency_count[cd_user];
                         if (count == 0)
                         {
                             independent_nodes.push_back(cd_user);
+                            std::push_heap(independent_nodes.begin(), independent_nodes.end(), comp);
                         }
                     }
-            }
-        }
-
-        //std::cout << "Pre-Affinity Node List" << std::endl;
-        for (auto a: result_list)
-        {
-            //std::cout << a->get_name() << ": " << a << std::endl;
-            auto control_deps = a->get_control_dependencies();
-            if (!control_deps.empty())
-            {
-                //std::cout << "    Control Dependencies" << std::endl;
-                for (auto cd: control_deps)
-                {
-                    //std::cout << "        " << cd->get_name() << ": " << cd << std::endl;
-                }
             }
         }
 
@@ -158,63 +155,61 @@ namespace ngraph
         //
         // Also, use the normal for loop because we need the actual list iterator when
         // using `std::list::splice`
-        std::unordered_set<std::string> handled_nodes;
-        bool modified = true;
-        while (modified)
-        {
-            modified = false;
-            for (auto it = result_list.begin(); it != result_list.end(); ++it)
-            {
-                // Get the node from the result_iter
-                std::shared_ptr<Node> node = *it;
+        // std::unordered_set<std::string> handled_nodes;
+        // bool modified = true;
+        // while (modified)
+        // {
+        //     modified = false;
+        //     for (auto it = result_list.begin(); it != result_list.end(); ++it)
+        //     {
+        //         // Get the node from the result_iter
+        //         std::shared_ptr<Node> node = *it;
 
-                // Skip if we've already handled this node
-                if (handled_nodes.find(node->get_name()) != handled_nodes.end())
-                {
-                    continue;
-                }
+        //         // Skip if we've already handled this node
+        //         if (handled_nodes.find(node->get_name()) != handled_nodes.end())
+        //         {
+        //             continue;
+        //         }
 
-                if (node->get_affinity() != AFFINITY_NONE)
-                {
-                    modified = true;
+        //         if (node->get_affinity() != AFFINITY_NONE)
+        //         {
+        //             modified = true;
 
-                    // Find its associated node.
-                    std::vector<std::string> associates = node->get_associates();
-                    auto predicate = [&](std::shared_ptr<Node> n){
-                        return std::find(associates.begin(), associates.end(), n->get_name())
-                            != associates.end();
-                    };
+        //             // Find its associated node.
+        //             std::vector<std::string> associates = node->get_associates();
+        //             auto predicate = [&](std::shared_ptr<Node> n){
+        //                 return std::find(associates.begin(), associates.end(), n->get_name())
+        //                     != associates.end();
+        //             };
 
-                    // If this is an input affinity, do a reverse search to make this happen
-                    // as soon as possible after all associates
-                    if (node->get_affinity() == AFFINITY_INPUT) 
-                    {
-                        auto pos_rev = std::find_if(result_list.rbegin(), result_list.rend(), predicate);
-                        NGRAPH_ASSERT(pos_rev != result_list.rend());
+        //             // If this is an input affinity, do a reverse search to make this happen
+        //             // as soon as possible after all associates
+        //             if (node->get_affinity() == AFFINITY_INPUT) 
+        //             {
+        //                 auto pos_rev = std::find_if(result_list.rbegin(), result_list.rend(), predicate);
+        //                 NGRAPH_ASSERT(pos_rev != result_list.rend());
 
-                        auto pos = std::find(result_list.begin(), result_list.end(), *pos_rev);
-                        result_list.splice(++pos, result_list, it);
-                    } else {
-                        auto pos = std::find_if(result_list.begin(), result_list.end(), predicate);
-                        NGRAPH_ASSERT(pos != result_list.end());
-                        result_list.splice(pos, result_list, it);
-                    }
-                    //std::cout << "C++: Applying Node Affinity: "
-                    //          << node->get_name() << " to "
-                    //          << associate_name
-                    //          << std::endl;
-                }
-                handled_nodes.insert(node->get_name());
+        //                 auto pos = std::find(result_list.begin(), result_list.end(), *pos_rev);
+        //                 result_list.splice(++pos, result_list, it);
+        //             } else {
+        //                 auto pos = std::find_if(result_list.begin(), result_list.end(), predicate);
+        //                 NGRAPH_ASSERT(pos != result_list.end());
+        //                 result_list.splice(pos, result_list, it);
+        //             }
+        //             //std::cout << "C++: Applying Node Affinity: "
+        //             //          << node->get_name() << " to "
+        //             //          << associate_name
+        //             //          << std::endl;
+        //         }
+        //         handled_nodes.insert(node->get_name());
 
-                // Exit if we've modified the underlying list - need to start again.
-                if (modified == true)
-                {
-                    break;
-                }
-            }
-        }
-
-        NGRAPH_ASSERT(nodes.size() == result_list.size());
+        //         // Exit if we've modified the underlying list - need to start again.
+        //         if (modified == true)
+        //         {
+        //             break;
+        //         }
+        //     }
+        // }
 
         return result_list;
     }

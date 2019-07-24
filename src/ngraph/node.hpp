@@ -87,7 +87,7 @@ namespace ngraph
     // AFFINITY_OUTPUT: Node should be located immediately after its associated node.
     //
     // AFFINITY_INPUT: Node should be located immediately before its associated node.
-    enum NodeAffinity { AFFINITY_NONE, AFFINITY_OUTPUT, AFFINITY_INPUT };
+    //enum NodeAffinity { AFFINITY_NONE, AFFINITY_OUTPUT, AFFINITY_INPUT };
 
     /// Nodes are the backbone of the graph of Value dataflow. Every node has
     /// zero or more nodes as arguments and one value, which is either a tensor
@@ -282,11 +282,13 @@ namespace ngraph
         ///// Affinities
         /////
 
-        NodeAffinity get_affinity() { return m_affinity; }
-        void set_affinity(NodeAffinity affinity) { m_affinity = affinity; }
+        int64_t get_priority() { return m_priority; }
+        void set_priority(int64_t priority) { m_priority = priority; }
+        //NodeAffinity get_affinity() { return m_affinity; }
+        //void set_affinity(NodeAffinity affinity) { m_affinity = affinity; }
 
-        const std::vector<std::string>& get_associates() const { return m_associates; }
-        void add_associate(std::string associate) { m_associates.push_back(associate); }
+        //const std::vector<std::string>& get_associates() const { return m_associates; }
+        //void add_associate(std::string associate) { m_associates.push_back(associate); }
 
     protected:
         std::set<std::shared_ptr<Node>> m_control_dependencies;
@@ -304,13 +306,12 @@ namespace ngraph
         size_t m_placement_index = placement_invalid;
 
         /////
-        ///// Affinities
+        ///// Priority
         /////
 
-        // Affinity type of this node.
-        NodeAffinity m_affinity = AFFINITY_NONE; 
-        // The node this node should be associated with.
-        std::vector<std::string> m_associates;
+        // MARK: Scheduling priority. Lower priority number indicates should schedule before 
+        // nodes with higher priority number.
+        int64_t m_priority = 0;
     };
 
     class NodeValidationError : public AssertionFailure
