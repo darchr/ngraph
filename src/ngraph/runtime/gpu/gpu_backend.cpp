@@ -81,7 +81,13 @@ runtime::gpu::GPU_Backend::BackendContext::BackendContext()
 
     // register with c-api runtime context
     m_runtime_context->compiled_kernel_pool = new CudaFunctionPool;
+
+    // Setup async stream
     m_runtime_context->async_stream = m_primitive_emitter->get_cuda_emitter()->get_stream();
+
+    // Setup cudnn and cublas to use cudaStreamPerThrea
+    CUDNN_SAFE_CALL(cudnnSetStream(*m_runtime_context->cudnn_handle, cudaStreamPerThread));
+    cublasSetStream(*m_runtime_context->cublas_handle, cudaStreamPerThread);
 }
 
 void runtime::gpu::GPU_Backend::BackendContext::prepare_runtime_context()
@@ -100,6 +106,7 @@ void runtime::gpu::GPU_Backend::BackendContext::bind_cuda_context_to_thread()
 
 runtime::gpu::GPU_Backend::BackendContext::~BackendContext()
 {
+    std::cout << "Cleaning Up Backend Context" << std::endl;
     cublasDestroy(*m_runtime_context->cublas_handle);
     delete m_runtime_context->cublas_handle;
     cudnnDestroy(*m_runtime_context->cudnn_handle);

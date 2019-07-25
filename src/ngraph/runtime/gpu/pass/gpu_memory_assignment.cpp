@@ -6,6 +6,7 @@
 #include "ngraph/op/constant.hpp"
 #include "ngraph/op/get_output_element.hpp"
 #include "ngraph/op/slice.hpp"
+#include "ngraph/op/move.hpp"
 
 #include "ngraph/runtime/gpu/gpu_op_annotations.hpp"
 
@@ -157,6 +158,28 @@ void runtime::gpu::pass::GPUMemoryLayout::liveness_analysis(shared_ptr<Function>
     }
 
     unordered_set<descriptor::Tensor*> currently_live;
+
+    // Keep track of the previous node.
+    //
+    // We need to do this so we can do workspace allocation correctly
+    set<Node*> followed_by_async;
+    set<Node*> last_move_in_chain;
+    shared_ptr<Node> previous_node;
+    for (const shared_ptr<Node>& node : ops)
+    {
+        if (dynamic_pointer_cast<op::MoveAsync>(node) && 
+                !dynamic_pointer_cast<op::MoveAsync>(previous_node))
+        {
+            followed_by_async.insert(previous_node.get());
+        } else if (!dynamic_pointer_cast<op::MoveAsync>(node) &&
+                    dynamic_pointer_cast<op::MoveAsync>(previous_node))
+        {
+            last_move_in_chain.insert(previous_node.get());
+        }
+        previous_node = node;
+    }
+    
+    vector<descriptor::Tensor*> pending_workspaces;
     for (auto it = ops.rbegin(); it != ops.rend(); it++)
     {
         const shared_ptr<Node>& node = *it;
@@ -216,11 +239,29 @@ void runtime::gpu::pass::GPUMemoryLayout::liveness_analysis(shared_ptr<Function>
         // free list
         if (runtime::gpu::has_algo(node.get()))
         {
-            std::cout << "Setting workspace liveness for: " << node->get_name() << std::endl;
+            descriptor::Tensor* workspace_tensor = 
+                runtime::gpu::get_workspace_tensor(node.get()).get();
 
-            descriptor::Tensor* workspace_tensor = runtime::gpu::get_workspace_tensor(node.get()).get();
-            free_tensor_decls.insert(workspace_tensor);
-            new_tensor_decls.insert(workspace_tensor);
+            //free_tensor_decls.insert(workspace_tensor);
+            if (followed_by_async.count(node.get()) == 0)
+            {
+                new_tensor_decls.insert(workspace_tensor);
+            } else {
+                //std::cout << "Inserting Workspace into queue" << std::endl;
+                pending_workspaces.push_back(workspace_tensor);
+            }
+        }
+
+        // If we're transitioning out of a MoveAsync chain, check to see if there are 
+        // pending workspace to free - and free them
+        if (last_move_in_chain.count(node.get()) == 1)
+        {
+            for (auto& tensor: pending_workspaces)
+            {
+                //std::cout << "Freeing Workspace after MoveAsync" << std::endl;
+                free_tensor_decls.insert(tensor);
+            }
+            pending_workspaces.clear();
         }
 
         node->liveness_free_list = free_tensor_decls;

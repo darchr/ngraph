@@ -79,7 +79,7 @@ namespace ngraph
             {
             public:
                 GPU_Executable(std::shared_ptr<Function> func, bool enable_timing);
-                ~GPU_Executable();
+                ~GPU_Executable() override;
 
                 bool call(const std::vector<std::shared_ptr<runtime::Tensor>>& outputs,
                           const std::vector<std::shared_ptr<runtime::Tensor>>& inputs) override;

@@ -519,9 +519,23 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                 }
             }
 
+            // MARK: Determine the ops that are followed by MoveAsyncs.
+            //
+            // We must emit a barrier before these instructions.
+            set<Node*> wait_nodes;
+            shared_ptr<Node> previous_node;
+            for (shared_ptr<Node> node : m_function_ordered_ops.at(current_function))
+            {
+                if (dynamic_pointer_cast<op::MoveAsync>(node) && !dynamic_pointer_cast<op::MoveAsync>(previous_node))
+                {
+                    wait_nodes.insert(previous_node.get());
+                }
+                previous_node = node;
+            }
+             
             // MARK: Keep track of the previously emitter node so we can synchronize the 
             // movement and compute streams
-            shared_ptr<Node> previous_node;
+            previous_node = nullptr;
             for (shared_ptr<Node> node : m_function_ordered_ops.at(current_function))
             {
                 vector<GPUTensorWrapper> in;
@@ -553,6 +567,21 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                     node_input_names.emplace_back(tv->get_name());
                 }
 
+                if (wait_nodes.count(node.get()) == 1)
+                {
+                    // Synchronize on the default compute stream
+                    m_writer << "runtime::gpu::wait_barrier(ctx, false);\n";
+                }
+
+                // If the previous node is a async and this node is not, synchronize the
+                // two CUDA streams
+                if (dynamic_pointer_cast<ngraph::op::MoveAsync>(previous_node) && 
+                        !dynamic_pointer_cast<ngraph::op::MoveAsync>(node))
+                {
+                    // Synchronize on the async move stream
+                    m_writer << "runtime::gpu::wait_barrier(ctx, true);\n";
+                }
+
                 // Emit function description comment
                 if (!node->is_parameter() && !node->is_constant())
                 {
@@ -563,13 +592,6 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                     m_writer << join(parameter_nodes);
                     m_writer << ")\n";
                     emit_debug_function_entry(node.get());
-                }
-
-                if (!dynamic_pointer_cast<ngraph::op::MoveAsync>(previous_node) &&
-                        dynamic_pointer_cast<ngraph::op::MoveAsync>(node))
-                {
-                    // Synchronize on the default compute stream
-                    m_writer << "runtime::gpu::wait_barrier(ctx, false);\n";
                 }
 
                 // TIMER: Begin Timer
@@ -597,15 +619,6 @@ void runtime::gpu::GPUExternalFunction::emit_functions()
                     }
                     names.push_back("ctx");
                     m_writer << func_name << "(" << join(names) << ");\n";
-                }
-
-                // If the previous node is a async and this node is not, synchronize the
-                // two CUDA streams
-                if (dynamic_pointer_cast<ngraph::op::MoveAsync>(previous_node) && 
-                        !dynamic_pointer_cast<ngraph::op::MoveAsync>(node))
-                {
-                    // Synchronize on the async move stream
-                    m_writer << "runtime::gpu::wait_barrier(ctx, true);\n";
                 }
 
                 // Emit operation epilogue
