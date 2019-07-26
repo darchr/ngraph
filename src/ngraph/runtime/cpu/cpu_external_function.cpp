@@ -168,6 +168,7 @@
 #include "ngraph/runtime/cpu/pass/cpu_collapse_dims.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_fusion.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_horizontal_fusion.hpp"
+#include "ngraph/runtime/cpu/pass/cpu_jl_callback.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_layout.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_mat_fusion.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_memory_assignment.hpp"
@@ -1331,16 +1332,23 @@ void runtime::cpu::CPU_ExternalFunction::register_common_passes(
             PropagateCacheability, true, ngraph::pass, runtime::cpu::get_annotations_factory());
     }
 
-    // Persistent Memory Assignment Pass
-    //
-    // Configure this to not run by default.
-    //REGISTER_KNOBBED_PASS(
-    //        HeterogenousMemoryAssignment, false, cpu::pass::HeterogenousMemoryAssignment);
-
     bool reuse_memory = pass_config.get_pass_attribute("CPUMemoryAssignment::ReuseMemory") ||
                         pass_config.get_pass_attribute("ReuseMemory");
+    void* jl_callback = m_function->get_jl_callback();
+    if (jl_callback)
+    {
+        pass_manager.register_pass<runtime::cpu::pass::CPU_JL_Callback>(
+            reinterpret_cast<void (*)()>(jl_callback)
+        );
+    }
     pass_manager.register_pass<runtime::cpu::pass::CPUMemoryAssignment>(
         bufferID_to_tensorSets, tensor_to_bufferID, size_t(s_memory_pool_alignment), !reuse_memory);
+    if (jl_callback)
+    {
+        pass_manager.register_pass<runtime::cpu::pass::CPU_JL_Callback>(
+            reinterpret_cast<void (*)()>(jl_callback)
+        );
+    }
     pass_manager.get_state().set_visualize_tree_ops_map(runtime::cpu::get_visualize_tree_ops_map());
 }
 

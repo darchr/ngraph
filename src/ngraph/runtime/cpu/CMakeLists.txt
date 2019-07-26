@@ -105,6 +105,7 @@ set(SRC
     op/update_slice.cpp
     pass/cpu_assignment.cpp
     pass/cpu_collapse_dims.cpp
+    pass/cpu_jl_callback.cpp
     pass/cpu_fusion.cpp
     pass/cpu_horizontal_fusion.cpp
     pass/cpu_layout.cpp
