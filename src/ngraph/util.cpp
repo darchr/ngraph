@@ -34,6 +34,10 @@
 
 #include <iostream>
 
+#ifdef NGRAPH_NUMA_ENABLE
+    #include <numa.h>
+#endif
+
 using namespace std;
 using namespace ngraph;
 
@@ -180,22 +184,52 @@ void ngraph::aligned_free(void* p)
 #endif
 }
 
-void* ngraph::ngraph_malloc(size_t size)
+// MARK
+//
+// NUMA wants to know the sizes of everything for free. So - if we're allocating to a single
+// NUMA node, we have to keep track of the sizes of allocated pointers
+namespace ngraph
 {
-    auto ptr = malloc(size);
-    if (size != 0 && !ptr)
+    namespace
     {
-        NGRAPH_ERR << "malloc failed to allocate memory of size " << size;
-        throw std::bad_alloc();
+        std::map<void*, size_t> size_map;
     }
-    return ptr;
-}
 
-void ngraph::ngraph_free(void* ptr)
-{
-    if (ptr)
+    void* ngraph_malloc(size_t size)
     {
-        free(ptr);
+#ifdef NGRAPH_NUMA_ENABLE
+        // Hardcode numa node for now - later make environment variable
+        auto ptr = numa_alloc_onnode(size, 1);
+        if (ptr)
+        {
+            size_map[ptr] = size;
+        }
+        std::cout << "ALLOC: (ptr) " << ptr << " (size) " << size << std::endl;
+#else
+        auto ptr = malloc(size);
+#endif
+
+        if (size != 0 && !ptr)
+        {
+            NGRAPH_ERR << "malloc failed to allocate memory of size " << size;
+            throw std::bad_alloc();
+        }
+        return ptr;
+    }
+
+    void ngraph_free(void* ptr)
+    {
+        if (ptr)
+        {
+#ifdef NGRAPH_NUMA_ENABLE
+            size_t size = size_map.at(ptr);
+            numa_free(ptr, size);
+            size_map.erase(ptr);
+            std::cout << "FREE: (ptr) " << ptr << " (size) " << size << std::endl;
+#else
+            free(ptr);
+#endif
+        }
     }
 }
 

@@ -282,6 +282,12 @@ if (NGRAPH_PMDK_ENABLE)
    add_dependencies(ngraph libpmemobj)
 endif()
 
+if (NGRAPH_NUMA_ENABLE)
+    find_package(NUMA REQUIRED)
+    target_include_directories(ngraph SYSTEM PUBLIC ${NUMA_INCLUDE_DIRS})
+    target_link_libraries(ngraph PUBLIC ${NUMA_LIBRARIES})
+endif()
+
 #-----------------------------------------------------------------------------------------------
 # Installation logic...
 #-----------------------------------------------------------------------------------------------

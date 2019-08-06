@@ -147,6 +147,8 @@ option(NGRAPH_DISTRIBUTED_OMPI_ENABLE "Add distributed Open-MPI mode for all bac
 option(NGRAPH_PLAIDML_ENABLE "Enable the PlaidML backend" ${PLAIDML_FOUND})
 # Default to TRUE for now - add compile switches later
 option(NGRAPH_PMDK_ENABLE "Enable PMDK for Persistent Memory Allocation" FALSE)
+# Option for linking NUMA
+option(NGRAPH_NUMA_ENABLE "Enable NUMA control for memory allocation" FALSE)
 
 if (NGRAPH_GPUH_ENABLE)
     set(NGRAPH_GPU_ENABLE TRUE)
@@ -343,6 +345,10 @@ endif()
 
 if (NGRAPH_PMDK_ENABLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNGRAPH_PMDK_ENABLE")
+endif()
+
+if (NGRAPH_PMDK_ENABLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNGRAPH_NUMA_ENABLE")
 endif()
 
 add_custom_target(style-check
