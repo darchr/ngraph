@@ -204,7 +204,7 @@ namespace ngraph
         {
             size_map[ptr] = size;
         }
-        std::cout << "ALLOC: (ptr) " << ptr << " (size) " << size << std::endl;
+        //std::cout << "ALLOC: (ptr) " << ptr << " (size) " << size << std::endl;
 #else
         auto ptr = malloc(size);
 #endif
@@ -225,7 +225,7 @@ namespace ngraph
             size_t size = size_map.at(ptr);
             numa_free(ptr, size);
             size_map.erase(ptr);
-            std::cout << "FREE: (ptr) " << ptr << " (size) " << size << std::endl;
+            //std::cout << "FREE: (ptr) " << ptr << " (size) " << size << std::endl;
 #else
             free(ptr);
 #endif
