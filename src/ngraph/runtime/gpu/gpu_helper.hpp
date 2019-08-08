@@ -27,19 +27,19 @@ namespace ngraph
             void set_algo(const std::shared_ptr<op::ConvolutionBackpropData> node, size_t algo_enum, size_t workspace_size);
             void set_algo(const std::shared_ptr<op::ConvolutionBackpropFilters> node, size_t algo_enum, size_t workspace_size);
 
-            std::vector<std::tuple<uint32_t, float, size_t>> get_algo_options(
+            std::vector<std::tuple<uint32_t, float, size_t, bool>> get_algo_options(
                     const std::shared_ptr<Node> node
                     );
 
-            std::vector<std::tuple<uint32_t, float, size_t>> get_algo_options(
+            std::vector<std::tuple<uint32_t, float, size_t, bool>> get_algo_options(
                     const std::shared_ptr<op::Convolution> node
                     );
 
-            std::vector<std::tuple<uint32_t, float, size_t>> get_algo_options(
+            std::vector<std::tuple<uint32_t, float, size_t, bool>> get_algo_options(
                     const std::shared_ptr<op::ConvolutionBackpropData> node
                     );
 
-            std::vector<std::tuple<uint32_t, float, size_t>> get_algo_options(
+            std::vector<std::tuple<uint32_t, float, size_t, bool>> get_algo_options(
                     const std::shared_ptr<op::ConvolutionBackpropFilters> node
                     );
 

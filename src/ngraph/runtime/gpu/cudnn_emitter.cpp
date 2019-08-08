@@ -1394,9 +1394,11 @@ size_t runtime::gpu::CUDNNEmitter::build_convolution(const std::string& dtype,
                                                             tensor_desc_1,
                                                             conv_fwd_algo,
                                                             &workspace_size_in_bytes));
+
     std::unique_ptr<gpu::primitive> conv;
     if (find_algo != algo_search::PRE_SELECTED)
     {
+
         // get an allocator for transient per kernel gpu memory
         GPUAllocator allocator = this->m_primitive_emitter->get_memory_allocator();
         // (lazy) allocation for kernel arguments

@@ -126,7 +126,7 @@ void runtime::gpu::set_algo(
 /////
 
 // Need to pass te backend context for getting the cudnn handle
-std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
+std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_options(
         const std::shared_ptr<Node> node)
 {
     auto op_convolution = std::dynamic_pointer_cast<ngraph::op::Convolution>(node);
@@ -151,7 +151,7 @@ std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
 }
 
 // This follows the style of `build_convolution` in `cudnn_emitter.cpp`.
-std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
+std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_options(
         const std::shared_ptr<op::Convolution> node
         )
 {
@@ -222,15 +222,17 @@ std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
     // Algorithm Enum value
     // Run Time
     // Memory Footprint
-    std::vector<std::tuple<uint32_t, float, size_t>> return_vec;
+    std::vector<std::tuple<uint32_t, float, size_t, bool>> return_vec;
     for (auto res: results)
     {
-        if (res.status == CUDNN_STATUS_SUCCESS)
+        // Pass back CUDNN_STATUS_ALLOC_FAILED so we can return an error
+        if (res.status == CUDNN_STATUS_SUCCESS || res.status == CUDNN_STATUS_ALLOC_FAILED)
         {
-            auto tup = std::tuple<uint32_t, float, size_t>(
+            auto tup = std::tuple<uint32_t, float, size_t, bool>(
                     ngraph::runtime::gpu::to_underlying(res.algo),
                     res.time,
-                    res.memory
+                    res.memory,
+                    res.status == CUDNN_STATUS_ALLOC_FAILED
                     );
 
             return_vec.push_back(tup);
@@ -240,7 +242,7 @@ std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
     return return_vec;
 }
 
-std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
+std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_options(
         const std::shared_ptr<op::ConvolutionBackpropData> node
         )
 {
@@ -332,15 +334,16 @@ std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
     // Algorithm Enum value
     // Run Time
     // Memory Footprint
-    std::vector<std::tuple<uint32_t, float, size_t>> return_vec;
+    std::vector<std::tuple<uint32_t, float, size_t, bool>> return_vec;
     for (auto res: results)
     {
-        if (res.status == CUDNN_STATUS_SUCCESS)
+        if (res.status == CUDNN_STATUS_SUCCESS || res.status == CUDNN_STATUS_ALLOC_FAILED)
         {
-            auto tup = std::tuple<uint32_t, float, size_t>(
+            auto tup = std::tuple<uint32_t, float, size_t, bool>(
                     ngraph::runtime::gpu::to_underlying(res.algo),
                     res.time,
-                    res.memory
+                    res.memory,
+                    res.status == CUDNN_STATUS_ALLOC_FAILED
                     );
 
             return_vec.push_back(tup);
@@ -350,7 +353,7 @@ std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
     return return_vec;
 }
 
-std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
+std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_options(
         const std::shared_ptr<op::ConvolutionBackpropFilters> node)
 {
     // Get the backend context from the op annotations
@@ -437,15 +440,16 @@ std::vector<std::tuple<uint32_t, float, size_t>> runtime::gpu::get_algo_options(
     // Memory Footprint
     std::cout << "Filters Max Algos: " << max_algos << std::endl;
     std::cout << "Filters Num Algos: " << num_algos << std::endl;
-    std::vector<std::tuple<uint32_t, float, size_t>> return_vec;
+    std::vector<std::tuple<uint32_t, float, size_t, bool>> return_vec;
     for (auto res: results)
     {
-        if (res.status == CUDNN_STATUS_SUCCESS)
+        if (res.status == CUDNN_STATUS_SUCCESS || res.status == CUDNN_STATUS_ALLOC_FAILED)
         {
-            auto tup = std::tuple<uint32_t, float, size_t>(
+            auto tup = std::tuple<uint32_t, float, size_t, bool>(
                     ngraph::runtime::gpu::to_underlying(res.algo),
                     res.time,
-                    res.memory
+                    res.memory,
+                    res.status == CUDNN_STATUS_ALLOC_FAILED
                     );
 
             return_vec.push_back(tup);
