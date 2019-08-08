@@ -281,10 +281,10 @@ void runtime::gpu::pass::GPUMemoryLayout::liveness_analysis(shared_ptr<Function>
         {
             for (descriptor::Tensor* tensor: pending_workspaces)
             {
-                std::cout << "At Node: " << node->get_name() << std::endl;
-                std::cout << "Freeing Workspace after MoveAsync:" 
-                          << tensor->get_name() 
-                          << std::endl;
+                //std::cout << "At Node: " << node->get_name() << std::endl;
+                //std::cout << "Freeing Workspace after MoveAsync:" 
+                //          << tensor->get_name() 
+                //          << std::endl;
 
                 node->liveness_free_list.insert(tensor);
             }
