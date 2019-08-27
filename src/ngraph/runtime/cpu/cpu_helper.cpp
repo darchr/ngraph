@@ -11,6 +11,16 @@ using namespace ngraph;
 
 bool runtime::cpu::input_needs_conversion(const shared_ptr<Node>& node, size_t input_index)
 {
+    // Get the layout. If the dynamic pointer cast fails, the we don't need conversion.
+    auto cpu_tvl = dynamic_pointer_cast<runtime::cpu::LayoutDescriptor>(
+        node->get_inputs()[input_index].get_output().get_tensor_ptr()->get_tensor_layout()
+    );
+
+    if (!cpu_tvl)
+    {
+        return false;
+    }
+
     // Check to see if a this input has a defined memory format. If so, return `true`.
     const mkldnn::memory::desc& mkldnn_md = 
         runtime::cpu::mkldnn_utils::get_input_mkldnn_md(node.get(), input_index);
@@ -23,7 +33,7 @@ int64_t runtime::cpu::get_input_format_int(const shared_ptr<Node>&node, size_t i
     const mkldnn::memory::desc& mkldnn_md = 
         runtime::cpu::mkldnn_utils::get_input_mkldnn_md(node.get(), index);
 
-    // In MKLDN, the memory formats are set by an enum. Here, we just convert that enum
+    // In MKLDNN, the memory formats are set by an enum. Here, we just convert that enum
     // to an integer and return that. Unique integers represent different format kinds,
     // so this will help is differentiate.
     return static_cast<int64_t>(mkldnn_md.data.format);
