@@ -30,7 +30,8 @@ using namespace std;
 runtime::gpu::GPUTensor::GPUTensor(const ngraph::element::Type& element_type,
                                    const Shape& shape,
                                    void* memory_pointer,
-                                   const Backend* backend)
+                                   const Backend* backend,
+                                   bool on_host)
     : runtime::Tensor(std::make_shared<ngraph::descriptor::Tensor>(element_type, shape, "external"),
                       backend)
     , m_custom_memory(false)
@@ -46,7 +47,12 @@ runtime::gpu::GPUTensor::GPUTensor(const ngraph::element::Type& element_type,
     }
     else if (m_buffer_size > 0)
     {
-        m_allocated_buffer_pool = runtime::gpu::create_gpu_buffer(m_buffer_size);
+        if (!on_host)
+        {
+            m_allocated_buffer_pool = runtime::gpu::create_gpu_buffer(m_buffer_size);
+        } else {
+            m_allocated_buffer_pool = runtime::gpu::create_host_buffer(m_buffer_size);
+        }
     }
 }
 

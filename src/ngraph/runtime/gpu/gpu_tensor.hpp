@@ -36,7 +36,12 @@ namespace ngraph
 class ngraph::runtime::gpu::GPUTensor : public ngraph::runtime::Tensor
 {
 public:
-    GPUTensor(const ngraph::element::Type& element_type, const Shape& shape, const Backend* parent);
+    GPUTensor(const ngraph::element::Type& element_type, 
+              const Shape& shape, 
+              const Backend* parent,
+              bool on_host = false
+            );
+
     GPUTensor(const ngraph::element::Type& element_type,
               const Shape& shape,
               void* memory_pointer,
