@@ -51,6 +51,10 @@ namespace ngraph
                     create_tensor(const ngraph::element::Type& element_type,
                                   const Shape& shape) override;
 
+                std::shared_ptr<ngraph::runtime::Tensor>
+                    create_remote_tensor(const ngraph::element::Type& element_type,
+                                  const Shape& shape);
+
                 std::shared_ptr<runtime::Executable> compile(std::shared_ptr<Function> func,
                                                              bool timing_enabled = false) override;
 

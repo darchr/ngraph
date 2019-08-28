@@ -129,7 +129,7 @@ shared_ptr<runtime::Tensor> runtime::gpu::GPU_Backend::create_tensor(
 shared_ptr<runtime::Tensor> runtime::gpu::GPU_Backend::create_remote_tensor(
     const element::Type& element_type, const Shape& shape)
 {
-    return make_shared<runtime::gpu::GPUTensor>(element_type, shape, memory_pointer, this, true);
+    return make_shared<runtime::gpu::GPUTensor>(element_type, shape, this, true);
 }
 
 shared_ptr<runtime::Executable> runtime::gpu::GPU_Backend::compile(shared_ptr<Function> func,

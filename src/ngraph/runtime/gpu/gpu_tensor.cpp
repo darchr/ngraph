@@ -58,8 +58,9 @@ runtime::gpu::GPUTensor::GPUTensor(const ngraph::element::Type& element_type,
 
 runtime::gpu::GPUTensor::GPUTensor(const ngraph::element::Type& element_type,
                                    const Shape& shape,
-                                   const Backend* backend)
-    : GPUTensor(element_type, shape, nullptr, backend)
+                                   const Backend* backend,
+                                   bool on_host)
+    : GPUTensor(element_type, shape, nullptr, backend, on_host)
 {
 }
 

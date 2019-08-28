@@ -45,7 +45,8 @@ public:
     GPUTensor(const ngraph::element::Type& element_type,
               const Shape& shape,
               void* memory_pointer,
-              const Backend* parent);
+              const Backend* parent,
+              bool on_host = false);
     virtual ~GPUTensor() override;
 
     /// \brief Write bytes directly into the tensor
