@@ -100,6 +100,14 @@ namespace ngraph
         friend std::ostream& operator<<(std::ostream&, const Function&);
         size_t get_instance_id() { return m_instance_id; }
         size_t get_temporary_pool_size();
+        size_t get_remote_pool_size() { return m_remote_pool_size; }
+
+        // Compilation callbacks
+        void set_jl_callback(void* cb) { m_jl_callback = cb; }
+        void clear_jl_callback() { m_jl_callback = nullptr; }
+        void* get_jl_callback() { return m_jl_callback; }
+        bool has_jl_callback() { return m_jl_callback != nullptr; }
+
         void set_temporary_pool_size(size_t);
         // updates graph and m_results list
         void replace_node(std::shared_ptr<Node> old, std::shared_ptr<Node> repl);
@@ -121,6 +129,8 @@ namespace ngraph
         ResultVector m_results;
         ParameterVector m_parameters;
         size_t m_temporary_pool_size;
+        size_t m_remote_pool_size;
+        void* m_jl_callback{nullptr};
 
     private:
         Function(const Function&) = delete;

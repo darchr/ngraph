@@ -419,7 +419,10 @@ namespace ngraph
         /// \throw std::out_of_range if the node does not have at least `output_index+1` outputs.
         Output<const Node> output(size_t output_index) const;
 
+        /// Because sometimes you just have to YOLO it
         void nuke_inputs() { m_inputs.clear(); }
+        int64_t get_priority() { return m_priority; }
+        void set_priority(int64_t p) { m_priority = p; }
 
     private:
         descriptor::Input& get_input_descriptor(size_t position);
@@ -439,6 +442,7 @@ namespace ngraph
         std::unordered_map<Node*, autodiff::Adjoints> m_adjoint_map;
         Placement m_placement = Placement::DEFAULT;
         size_t m_placement_index = placement_invalid;
+        int64_t m_priority{0};
     };
 
     /// \brief A handle for one of a node's inputs.
