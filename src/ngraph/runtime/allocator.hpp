@@ -28,6 +28,7 @@ namespace ngraph
     {
         class Allocator;
         class DefaultAllocator;
+        class PMMAllocator;
         /// \brief Create a default allocator that calls into system
         ///        allocation libraries
         ngraph::runtime::Allocator* get_default_allocator();

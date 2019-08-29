@@ -15,6 +15,8 @@
 //*****************************************************************************
 
 #include "ngraph/runtime/allocator.hpp"
+#include "ngraph/util.hpp"
+#include "ngraph/pmem.hpp"
 
 ngraph::runtime::Allocator::~Allocator()
 {
@@ -29,7 +31,7 @@ public:
         // allocated memory block that is suitably aligned for any scalar type.
         // TODO(pruthvi): replace std::malloc with custom aligned_alloc implementation
         // which is portable and work on all alignment requirement.
-        void* ptr = std::malloc(size);
+        void* ptr = ngraph::ngraph_malloc(size);
 
         // check for exception
         if (!ptr)
@@ -44,7 +46,7 @@ public:
     {
         if (ptr)
         {
-            std::free(ptr);
+            ngraph::ngraph_free(ptr);
         }
     }
 };
@@ -54,3 +56,29 @@ ngraph::runtime::Allocator* ngraph::runtime::get_default_allocator()
     static DefaultAllocator* allocator = new DefaultAllocator();
     return allocator;
 }
+
+class ngraph::runtime::PMMAllocator : public ngraph::runtime::Allocator
+{
+public:
+    void* malloc(size_t size, size_t alignment)
+    {
+
+        void* ptr = ngraph::pmem::pmem_malloc(size);
+
+        // check for exception
+        if (!ptr)
+        {
+            throw ngraph::ngraph_error("malloc failed to allocate memory of size " +
+                                       std::to_string(size));
+        }
+        return ptr;
+    }
+
+    void free(void* ptr)
+    {
+        if (ptr)
+        {
+            ngraph::pmem::pmem_free(ptr);
+        }
+    }
+};
