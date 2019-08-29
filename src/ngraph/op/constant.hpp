@@ -48,7 +48,8 @@ namespace ngraph
                 : m_element_type(type)
                 , m_shape(shape)
                   // Round up to 64 because of AvX 512 moves
-                , m_data(new runtime::AlignedBuffer(ngraph::round_up(shape_size(m_shape) * m_element_type.size(), 64), host_alignment()))
+                , m_data(new runtime::AlignedBuffer(shape_size(m_shape) * m_element_type.size(), 
+                                                    host_alignment()))
             {
                 NODE_VALIDATION_CHECK(
                     this,
@@ -82,7 +83,7 @@ namespace ngraph
             Constant(const element::Type& type, Shape shape, const std::vector<std::string>& values)
                 : m_element_type(type)
                 , m_shape(shape)
-                , m_data(new runtime::AlignedBuffer(ngraph::round_up(shape_size(m_shape) * m_element_type.size(), 64),
+                , m_data(new runtime::AlignedBuffer(shape_size(m_shape) * m_element_type.size(),
                                                     host_alignment()))
             {
                 NODE_VALIDATION_CHECK(
