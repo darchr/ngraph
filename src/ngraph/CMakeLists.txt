@@ -225,6 +225,8 @@ set (SRC
     op/minimum.hpp
     op/multiply.cpp
     op/multiply.hpp
+    op/move.cpp
+    op/move.hpp
     op/negative.cpp
     op/negative.hpp
     op/not.cpp
@@ -474,6 +476,8 @@ set (SRC
     placement.hpp
     provenance.cpp
     provenance.hpp
+    pmem.cpp
+    pmem.hpp
     rank.hpp
     runtime/aligned_buffer.cpp
     runtime/aligned_buffer.hpp
@@ -618,6 +622,18 @@ endif()
 if (NGRAPH_ONNX_IMPORT_ENABLE)
     target_sources(ngraph PRIVATE $<TARGET_OBJECTS:onnx_import_interface>)
     target_link_libraries(ngraph PRIVATE onnx_import)
+endif()
+
+if (NGRAPH_PMDK_ENABLE)
+    find_package(PMDK REQUIRED)
+    target_include_directories(ngraph SYSTEM PUBLIC ${PMDK_INCLUDE_DIRS})
+    target_link_libraries(ngraph PUBLIC ${PMDK_LIBRARIES})
+endif()
+
+if (NGRAPH_NUMA_ENABLE)
+    find_package(NUMA REQUIRED)
+    target_include_directories(ngraph SYSTEM PUBLIC ${NUMA_INCLUDE_DIRS})
+    target_link_libraries(ngraph PUBLIC ${NUMA_LIBRARIES})
 endif()
 
 # Build subdirectories for all build types on Windows

@@ -176,7 +176,7 @@ option(NGRAPH_NOP_ENABLE "Control the building of the NOP backend" TRUE)
 option(NGRAPH_GPUH_ENABLE "Control the building of the Hybrid GPU backend" FALSE)
 option(NGRAPH_GENERIC_CPU_ENABLE "Enable build nGraph for generic CPU backend" FALSE)
 option(NGRAPH_DEBUG_ENABLE "Enable output for NGRAPH_DEBUG statements" FALSE)
-option(NGRAPH_DEPRECATED_ENABLE "Enable compiler deprecation pragmas for deprecated APIs (recommended only for development use)" FALSE)
+option(NGRAPH_DEPRECATED_ENABLE "Enable compiler deprecation pragmas for deprecated APIs (recommended only for development use)" TRUE)
 option(NGRAPH_ONNX_IMPORT_ENABLE "Enable ONNX importer" FALSE)
 option(NGRAPH_DEX_ONLY "Build CPU DEX without codegen" FALSE)
 option(NGRAPH_ENABLE_CPU_CONV_AUTO "Enable mkldnn convolution_auto for CPU" TRUE)
@@ -191,6 +191,10 @@ option(NGRAPH_STATIC_LIB_ENABLE "Enable build nGraph static library" FALSE)
 option(NGRAPH_INTERPRETER_STATIC_LIB_ENABLE "Enable build INTERPRETER backend static library" FALSE)
 option(NGRAPH_CPU_STATIC_LIB_ENABLE "Enable build CPU backend static library" FALSE)
 option(NGRAPH_DYNAMIC_COMPONENTS_ENABLE "Enable dynamic loading of components" TRUE)
+
+# Added options for AutoTM
+option(NGRAPH_PMDK_ENABLE "Enable PMDK for Persistent Memory Allocation" FALSE)
+option(NGRAPH_NUMA_ENABLE "Enable NUMA control for memory allocation" FALSE)
 
 if (NGRAPH_CPU_ENABLE
         AND
@@ -235,6 +239,14 @@ endif()
 
 if (NOT NGRAPH_JSON_ENABLE)
     set(NGRAPH_TOOLS_ENABLE FALSE)
+endif()
+
+if (NGRAPH_PMDK_ENABLE)
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNGRAPH_PMDK_ENABLE")
+endif()
+
+if (NGRAPH_NUMA_ENABLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNGRAPH_NUMA_ENABLE")
 endif()
 
 macro (NORMALIZE_BOOL VAL)
