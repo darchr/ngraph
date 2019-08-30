@@ -431,6 +431,20 @@ void ngraph::insert_new_node_between(const shared_ptr<Node>& src_node,
         new_node->output(0)); // Remove [0] (again), add [8], remove [1], add [9]
 }
 
+// Helper when we already know which outputs or input we want to replace
+void special_insert_new_node_between(const std::shared_ptr<Node>& src_node,
+                                     size_t src_output_index,
+                                     const std::shared_ptr<Node>& dst_node,
+                                     size_t dst_input_index,
+                                     const shared_ptr<Node>& new_node)
+{
+    auto src_output = src_node->output(src_output_index);
+    auto dst_input = dst_node->input(dst_input_index);
+
+    src_output.remove_target_input(dst_input);
+    dst_input.replace_source_output(new_node->output(0));
+}
+
 std::shared_ptr<Node> ngraph::make_zero(const element::Type& element_type, const Shape& shape)
 {
     std::shared_ptr<Node> zero = op::Constant::create(element_type, Shape{}, {0.0});

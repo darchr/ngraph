@@ -225,6 +225,9 @@ namespace ngraph
         std::unordered_set<Node*> nodes_done;
         std::list<std::shared_ptr<Node>> result;
 
+        // Function for comparing two nodes for priority
+        auto cmp = [](Node* a, Node* b){ return a->get_priority() <= b->get_priority(); };
+
         for (auto& node : root_nodes)
         {
             nodes_to_do.push(node.get());
@@ -235,16 +238,21 @@ namespace ngraph
             if (nodes_done.count(node) == 0)
             {
                 bool can_add = true;
-                size_t arg_count = node->get_input_size();
-                for (size_t i = 0; i < arg_count; ++i)
-                {
-                    Node* dep = node->input(arg_count - i - 1).get_source_output().get_node();
-                    if (nodes_done.count(dep) == 0)
-                    {
-                        can_add = false;
-                        nodes_to_do.push(dep);
-                    }
-                }
+                auto inputs = node->inputs();
+                std::vector<Node*> nodes;
+
+                // Need to go from vector<Input<Node>> to vector<Node*> in order to sort
+                // by priority.
+                std::transform(inputs.begin(), 
+                               inputs.end(), 
+                               nodes.begin(), 
+                               [](Input<Node> a){ return a.get_source_output().get_node(); });
+
+                // Nodes iwth a lower priority will be pushed to the stack first - 
+                // scheduling it closer to the parent node.
+                std::sort(nodes.begin(), nodes.end(), cmp);
+
+                // Give control dependencies priority over standard inputs
                 if (include_control_deps)
                 {
                     for (auto& depptr : node->get_control_dependencies())
@@ -255,6 +263,14 @@ namespace ngraph
                             can_add = false;
                             nodes_to_do.push(dep);
                         }
+                    }
+                }
+                for (auto dep: nodes) 
+                {
+                    if (nodes_done.count(dep) == 0)
+                    {
+                        can_add = false;
+                        nodes_to_do.push(dep);
                     }
                 }
                 if (can_add)
@@ -376,6 +392,12 @@ namespace ngraph
     void insert_new_node_between(const std::shared_ptr<Node>& src_node,
                                  const std::shared_ptr<Node>& dst_node,
                                  const std::shared_ptr<Node>& new_node);
+
+    void specialinsert_new_node_between(const std::shared_ptr<Node>& src_node,
+                                        size_t src_output_index,
+                                        const std::shared_ptr<Node>& dst_node,
+                                        size_t dst_input_index,
+                                        const std::shared_ptr<Node>& new_node);
 
     std::shared_ptr<Node> make_zero(const element::Type& element_type, const Shape& shape);
 
