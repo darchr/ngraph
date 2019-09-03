@@ -201,10 +201,21 @@ void runtime::cpu::CPU_CallFrame::setup_runtime_context(Allocator* allocator)
 
         // Create temporary buffer pools
         size_t alignment = runtime::cpu::CPU_ExternalFunction::s_memory_pool_alignment;
+        size_t count = 0;
         for (auto buffer_size : m_external_function->get_memory_buffer_sizes())
         {
-            auto buffer = new AlignedBuffer(buffer_size, alignment, allocator);
+            // TODO: This is a hack for now to check if we have a persistent memory pool
+            // or not.
+            AlignedBuffer* buffer;
+            if (count == m_external_function->get_memory_buffer_sizes().size() - 2)
+            {
+                buffer = new AlignedBuffer(buffer_size, 2097152, allocator, 1);
+            } else {
+                buffer = new AlignedBuffer(buffer_size, alignment, allocator, 0);
+            }
+
             ctx->memory_buffers.push_back(buffer);
+            count++;
         }
         const auto& mkldnn_emitter = m_external_function->get_mkldnn_emitter();
 

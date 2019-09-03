@@ -32,7 +32,10 @@ runtime::AlignedBuffer::AlignedBuffer()
 {
 }
 
-runtime::AlignedBuffer::AlignedBuffer(size_t byte_size, size_t alignment, Allocator* allocator)
+runtime::AlignedBuffer::AlignedBuffer(size_t byte_size, 
+                                      size_t alignment, 
+                                      Allocator* allocator, 
+                                      size_t pool)
     : m_allocator(allocator)
     , m_byte_size(byte_size)
 {
@@ -40,11 +43,11 @@ runtime::AlignedBuffer::AlignedBuffer(size_t byte_size, size_t alignment, Alloca
     size_t allocation_size = m_byte_size + alignment;
     if (allocator)
     {
-        m_allocated_buffer = static_cast<char*>(m_allocator->malloc(allocation_size, alignment));
+        m_allocated_buffer = static_cast<char*>(m_allocator->malloc(allocation_size, alignment, pool));
     }
     else
     {
-        m_allocated_buffer = static_cast<char*>(malloc(allocation_size));
+        m_allocated_buffer = static_cast<char*>(ngraph::ngraph_malloc(allocation_size));
     }
     m_aligned_buffer = m_allocated_buffer;
     size_t mod = size_t(m_aligned_buffer) % alignment;
@@ -77,7 +80,7 @@ runtime::AlignedBuffer::~AlignedBuffer()
         }
         else
         {
-            free(m_allocated_buffer);
+            ngraph::ngraph_free(m_allocated_buffer);
         }
     }
 }

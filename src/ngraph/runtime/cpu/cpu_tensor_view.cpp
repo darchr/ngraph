@@ -20,6 +20,7 @@
 #include "cpu_tensor_view.hpp"
 #include "ngraph/descriptor/layout/tensor_layout.hpp"
 #include "ngraph/except.hpp"
+#include "ngraph/pmem.hpp"
 #include "ngraph/runtime/aligned_buffer.hpp"
 #include "ngraph/runtime/cpu/cpu_executor.hpp"
 #include "ngraph/runtime/cpu/cpu_layout_descriptor.hpp"
@@ -36,10 +37,12 @@ using namespace std;
 
 runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_type,
                                            const Shape& shape,
-                                           void* memory_pointer)
+                                           void* memory_pointer,
+                                           bool persistent)
     : runtime::Tensor(std::make_shared<ngraph::descriptor::Tensor>(element_type, shape, ""))
     , buffer(nullptr)
     , aligned_buffer(nullptr)
+    , m_persistent(persistent)
 {
     // TODO(jmenon): A fallback layout should not be needed but is required
     // because of how some unit test functionality is written (ex. 'backprop_derivative')
@@ -56,7 +59,13 @@ runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_
     else if (buffer_size > 0)
     {
         size_t allocation_size = buffer_size + BufferAlignment;
-        auto ptr = ngraph_malloc(allocation_size);
+        void* ptr;
+        if (persistent)
+        {
+            ptr = pmem::pmem_malloc(allocation_size);
+        } else {
+            ptr = ngraph_malloc(allocation_size);
+        }
         buffer = static_cast<char*>(ptr);
 
 // GCC major versions below 5 do not implement C++11 std::align
@@ -73,14 +82,20 @@ runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_
 }
 
 runtime::cpu::CPUTensorView::CPUTensorView(const ngraph::element::Type& element_type,
-                                           const Shape& shape)
-    : CPUTensorView(element_type, shape, nullptr)
+                                           const Shape& shape,
+                                           bool persistent)
+    : CPUTensorView(element_type, shape, nullptr, persistent)
 {
 }
 
 runtime::cpu::CPUTensorView::~CPUTensorView()
 {
-    ngraph_free(buffer);
+    if (m_persistent)
+    {
+        pmem::pmem_free(buffer);
+    } else {
+        ngraph_free(buffer);
+    }
 }
 
 char* runtime::cpu::CPUTensorView::get_data_ptr()

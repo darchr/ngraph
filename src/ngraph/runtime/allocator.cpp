@@ -25,7 +25,7 @@ ngraph::runtime::Allocator::~Allocator()
 class ngraph::runtime::DefaultAllocator : public ngraph::runtime::Allocator
 {
 public:
-    void* malloc(size_t size, size_t alignment)
+    void* malloc(size_t size, size_t alignment, size_t pool)
     {
         // If allocation succeeds, returns a pointer to the lowest (first) byte in the
         // allocated memory block that is suitably aligned for any scalar type.
@@ -60,10 +60,15 @@ ngraph::runtime::Allocator* ngraph::runtime::get_default_allocator()
 class ngraph::runtime::PMMAllocator : public ngraph::runtime::Allocator
 {
 public:
-    void* malloc(size_t size, size_t alignment)
+    void* malloc(size_t size, size_t alignment, size_t pool)
     {
-
-        void* ptr = ngraph::pmem::pmem_malloc(size);
+        void* ptr;
+        if (pool == 0)
+        {
+            ptr = ngraph::ngraph_malloc(size);
+        } else {
+            ptr = ngraph::pmem::pmem_malloc(size);
+        }
 
         // check for exception
         if (!ptr)
@@ -71,6 +76,7 @@ public:
             throw ngraph::ngraph_error("malloc failed to allocate memory of size " +
                                        std::to_string(size));
         }
+        ptr_to_pool[ptr] = pool;
         return ptr;
     }
 
@@ -78,7 +84,17 @@ public:
     {
         if (ptr)
         {
-            ngraph::pmem::pmem_free(ptr);
+            size_t pool = ptr_to_pool.at(ptr);
+            // Check what pool to free from.
+            if (pool == 0)
+            {
+                ngraph::ngraph_free(ptr);
+            } else {
+                ngraph::pmem::pmem_free(ptr);
+            }
         }
     }
+
+private:     
+    std::map<void*, size_t> ptr_to_pool;
 };

@@ -35,10 +35,12 @@ namespace ngraph
             {
             public:
                 CPU_BACKEND_API CPUTensorView(const ngraph::element::Type& element_type,
-                                              const Shape& shape);
+                                              const Shape& shape,
+                                              bool persistent = false);
                 CPU_BACKEND_API CPUTensorView(const ngraph::element::Type& element_type,
                                               const Shape& shape,
-                                              void* memory_pointer);
+                                              void* memory_pointer,
+                                              bool persistent = false);
                 CPU_BACKEND_API virtual ~CPUTensorView() override;
 
                 CPU_BACKEND_API char* get_data_ptr();
@@ -68,6 +70,7 @@ namespace ngraph
                 char* buffer;
                 char* aligned_buffer;
                 size_t buffer_size;
+                bool m_persistent;
             };
         }
     }

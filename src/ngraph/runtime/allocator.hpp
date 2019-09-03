@@ -44,7 +44,7 @@ public:
     /// \param size exact size of bytes to allocate
     /// \param alignment specifies the alignment. Must be a valid alignment supported by the
     ///                  implementation.
-    virtual void* malloc(size_t size, size_t alignment) = 0;
+    virtual void* malloc(size_t size, size_t alignment, size_t pool) = 0;
 
     /// \brief deallocates the memory pointed by ptr
     /// \param ptr pointer to the aligned memory to be released
