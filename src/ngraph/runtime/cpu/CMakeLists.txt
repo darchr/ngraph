@@ -120,6 +120,7 @@ set(SRC
     pass/cpu_collapse_dims.cpp
     pass/cpu_fusion.cpp
     pass/cpu_horizontal_fusion.cpp
+    pass/cpu_jl_callback.cpp
     pass/cpu_layout.cpp
     pass/cpu_mat_fusion.cpp
     pass/cpu_memory_assignment.cpp

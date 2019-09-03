@@ -114,7 +114,7 @@ pass::MemoryManager::node::node(size_t size, block_state state)
 
 pass::MemoryManager::MemoryManager(size_t alignment, bool disable_memory_reuse)
     : m_alignment{alignment}
-    , m_scheme{disable_memory_reuse ? allocation_scheme::NO_REUSE : allocation_scheme::FIRST_FIT}
+    , m_scheme{disable_memory_reuse ? allocation_scheme::NO_REUSE : allocation_scheme::BEST_FIT}
     , m_max_allocated{0}
 {
     if (m_alignment == 0)

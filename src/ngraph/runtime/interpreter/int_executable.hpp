@@ -60,6 +60,7 @@
 #include "ngraph/op/min.hpp"
 #include "ngraph/op/minimum.hpp"
 #include "ngraph/op/multiply.hpp"
+#include "ngraph/op/move.hpp"
 #include "ngraph/op/not_equal.hpp"
 #include "ngraph/op/one_hot.hpp"
 #include "ngraph/op/or.hpp"
@@ -1087,6 +1088,14 @@ private:
                                    node.get_input_shape(0),
                                    node.get_input_shape(1),
                                    multiply->get_autob());
+            break;
+        }
+        case OP_TYPEID::Move:{
+            throw ngraph_error("Move not supported");
+            break;
+        }
+        case OP_TYPEID::MoveAsync:{
+            throw ngraph_error("MoveAsync not supported");
             break;
         }
         case OP_TYPEID::Negative:

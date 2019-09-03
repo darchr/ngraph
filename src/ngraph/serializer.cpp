@@ -1489,6 +1489,17 @@ shared_ptr<Node> JSONDeserializer::deserialize_node(json node_js)
                 make_shared<op::Multiply>(args[0], args[1], read_auto_broadcast(node_js, "autob"));
             break;
         }
+
+        case OP_TYPEID::Move:
+        {
+            throw ngraph_error("Move Not supported for serialization");
+        }
+
+        case OP_TYPEID::MoveAsync:
+        {
+            throw ngraph_error("MoveAsync Not supported for serialization");
+        }
+
         case OP_TYPEID::MVN:
         {
             auto normalize_variance = node_js.at("normalize_variance").get<bool>();
@@ -2592,6 +2603,10 @@ json JSONSerializer::serialize_node(const Node& n)
             node["autob"] = write_auto_broadcast(tmp->get_autob());
         }
         break;
+    }
+    case OP_TYPEID::Move: { break;
+    }
+    case OP_TYPEID::MoveAsync: { break;
     }
     case OP_TYPEID::MVN:
     {

@@ -37,6 +37,7 @@
 #include "contrib/mlir/pass/mlir_subgraph_extraction.hpp"
 #endif
 
+
 #include "ngraph/descriptor/input.hpp"
 #include "ngraph/descriptor/output.hpp"
 #include "ngraph/file_util.hpp"
@@ -98,6 +99,7 @@
 #include "ngraph/op/min.hpp"
 #include "ngraph/op/minimum.hpp"
 #include "ngraph/op/multiply.hpp"
+#include "ngraph/op/move.hpp"
 #include "ngraph/op/negative.hpp"
 #include "ngraph/op/not.hpp"
 #include "ngraph/op/not_equal.hpp"
@@ -189,6 +191,7 @@
 #include "ngraph/runtime/cpu/pass/cpu_fusion.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_horizontal_fusion.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_layout.hpp"
+#include "ngraph/runtime/cpu/pass/cpu_jl_callback.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_mat_fusion.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_memory_assignment.hpp"
 #include "ngraph/runtime/cpu/pass/cpu_memory_optimization.hpp"
@@ -442,6 +445,9 @@ static const runtime::cpu::OpMap dispatcher{
      &runtime::cpu::CPU_Emitter::emit<ngraph::op::DeconvolutionBias>},
     {TI(ngraph::op::Dropout), &runtime::cpu::CPU_Emitter::emit<op::Dropout>},
     {TI(ngraph::op::Tile), &runtime::cpu::CPU_Emitter::emit<op::Tile>},
+    // Custom Move functions
+    {TI(ngraph::op::Move), &runtime::cpu::CPU_Emitter::emit<op::Move>},
+    {TI(ngraph::op::MoveAsync), &runtime::cpu::CPU_Emitter::emit<op::MoveAsync>}
 };
 
 static void
@@ -516,6 +522,7 @@ void runtime::cpu::CPU_ExternalFunction::compile(ngraph::pass::PassConfig& pass_
     writer +=
         R"(
 #include <cmath>
+#include <immintrin.h>
 #include <fstream>
 #include <mkldnn.hpp>
 #include "ngraph/distributed.hpp"
@@ -699,6 +706,30 @@ using namespace ngraph::runtime;
         }
     }
 
+    // Check if PMM is used
+    bool pmm_used = false; 
+    for (shared_ptr<Node> node : ordered_ops)
+    {
+        if (!node->is_parameter() && !node->is_constant())
+        {
+            for (const descriptor::Input& input : node->get_inputs())
+            {
+                const descriptor::Output& output = input.get_output();
+                shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+                // TODO: Move back to enums for pool numbers
+                if (tv->get_pool_number() == 1)
+                {
+                    pmm_used = true;
+                }
+            }
+        }
+    }
+    if (pmm_used)
+    {
+        m_memory_buffer_sizes.push_back(m_function->get_remote_pool_size());
+    }
+
+    // Check if temporaries are used
     bool temporaries_used = false;
     for (shared_ptr<Node> node : ordered_ops)
     {
@@ -762,6 +793,13 @@ using namespace ngraph::runtime;
         writer << "\n";
     }
 
+    if (pmm_used)
+    {
+        writer << "size_t pmm_base_ptr = (size_t) ctx->memory_buffers["
+               << m_memory_buffer_sizes.size() - 2 << "]->get_pter();\n";
+        writer << "\n";
+    }
+
     writer << "bool* t_en = (bool*)" << m_function->get_name() << "_t_en;\n";
 
     if (m_use_tbb)
@@ -810,8 +848,16 @@ using namespace ngraph::runtime;
                 for (auto& ele_t : ele.second.second)
                 {
                     stringstream ss;
-                    ss << "((" << ele_t->get_element_type().c_type_string() << "*)(pool_base_ptr + "
-                       << ele_t->get_pool_offset() << "))";
+                    // Check if PMM pool
+                    if (ele_t->get_pool_number() == 1)
+                    {
+                        ss << "((" << ele_t->get_element_type().c_type_string() << "*)(pmm_base_ptr + "
+                           << ele_t->get_pool_offset() << "))";
+                    // Otherwise, this belongs in the normal DRAM pool
+                    } else {
+                        ss << "((" << ele_t->get_element_type().c_type_string() << "*)(pool_base_ptr + "
+                           << ele_t->get_pool_offset() << "))";
+                    }
                     m_variable_name_map[ele_t->get_name()] = ss.str();
                     m_tensor_roles[ele_t->get_name()] = TensorRole::INTERMEDIATE;
                 }
@@ -916,7 +962,7 @@ using namespace ngraph::runtime;
         // Op Control
         if (!node->is_parameter() && !node->is_constant())
         {
-            writer << "if (ctx->first_iteration ";
+            writer << "if (1 || ctx->first_iteration ";
             for (const descriptor::Input& input : node->get_inputs())
             {
                 const descriptor::Output& output = input.get_output();
@@ -999,7 +1045,8 @@ using namespace ngraph::runtime;
             writer.indent++;
             for (auto output_name : node_output_names)
             {
-                writer << "t_en[" << tensor_index_map[output_name] << "] = false;\n";
+                // MARK: for now - always enable downstream ops
+                writer << "t_en[" << tensor_index_map[output_name] << "] = true;\n";
             }
             writer.indent--;
             writer << "}\n";
@@ -1250,8 +1297,23 @@ void runtime::cpu::CPU_ExternalFunction::register_common_passes(
         PropagateCacheability, true, ngraph::pass, runtime::cpu::get_annotations_factory());
     bool reuse_memory = pass_config.get_pass_attribute("CPUMemoryAssignment::ReuseMemory") ||
                         pass_config.get_pass_attribute("ReuseMemory");
+
+    // MARK: Insert Julia callback locations
+    void* jl_callback = m_function->get_jl_callback();
+    if (jl_callback)
+    {
+        pass_manager.register_pass<runtime::cpu::pass::CPU_JL_Callback>(
+            reinterpret_cast<void (*)()>(jl_callback)
+        );
+    }
     pass_manager.register_pass<runtime::cpu::pass::CPUMemoryAssignment>(
         bufferID_to_tensorSets, tensor_to_bufferID, size_t(s_memory_pool_alignment), !reuse_memory);
+    if (jl_callback)
+    {
+        pass_manager.register_pass<runtime::cpu::pass::CPU_JL_Callback>(
+            reinterpret_cast<void (*)()>(jl_callback)
+        );
+    }
 
     pass_manager.get_state().set_visualize_tree_ops_map(runtime::cpu::get_visualize_tree_ops_map());
 }

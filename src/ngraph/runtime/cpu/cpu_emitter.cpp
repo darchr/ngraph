@@ -77,6 +77,7 @@
 #include "ngraph/op/min.hpp"
 #include "ngraph/op/minimum.hpp"
 #include "ngraph/op/multiply.hpp"
+#include "ngraph/op/move.hpp"
 #include "ngraph/op/negative.hpp"
 #include "ngraph/op/not.hpp"
 #include "ngraph/op/not_equal.hpp"
@@ -988,6 +989,84 @@ namespace ngraph
                 writer << out[0].get_name() << "[i] = " << args[0].get_name() << "[i] * "
                        << args[1].get_name() << "[i];\n";
                 writer.block_end();
+                writer.block_end();
+            }
+
+            template<>
+            void CPU_Emitter::EMITTER_DECL(ngraph::op::Move)
+            {
+                // Select kernel based on transfer size. Small transfers should just use
+                // memcpy
+                //
+                // The size limit is just a heuristic right now. And by "heuristic" I mean
+                // I just made it up.
+                // TODO: Figure out a more exact way of doing this.
+                size_t bytes = args[0].get_tensor()->size();
+                if (bytes <= 1024 * 1024)
+                {
+                    writer.block_begin();
+                    writer << "if (" << out[0].get_name() << " != " << args[0].get_name()
+                           << ")\n";
+                    writer.block_begin();
+                    writer << "memcpy(" << out[0].get_name() << ", "
+                           << args[0].get_name() << ", "
+                           << bytes << ");\n";
+                    writer.block_end();
+                    writer.block_end();
+                } else {
+                    writer.block_begin();
+                    // Cast the output and args array to vectors of __m512i to do the copy
+                    writer << "__m512i* src = reinterpret_cast<__m512i*>("
+                           << args[0].get_name() << ");\n";
+
+                     writer << "__m512i* dst = reinterpret_cast<__m512i*>("
+                           << out[0].get_name() << ");\n";
+
+                    // Compute the number of 512 chunks from the number of bytes in the
+                    // original array.
+                    //
+                    // Use a trick to compute a rounded up integer division so we for sure
+                    // copy everything.
+                    //
+                    // Because the default alignment of memory allocations if 4096 bytes,
+                    // we do not have to worry about accidentally colliding/clobbering
+                    // neighboring data blocks
+                    size_t array_bytes = args[0].get_tensor()->size();
+                    size_t num_elements = (array_bytes + 64 - 1) / 64;
+
+                    // Quick check for now. In the future, I'll move this into the Move node
+                    // itself. Basically, if we're writing to PMEM, we only want 4 threads
+                    // running. We do this by using a chunks size 1/4th the size of the 
+                    // total array
+                    if (out[0].get_tensor()->get_pool_number() == 1)
+                    {
+                        //size_t chunk_size = num_elements / 4;
+                        //writer << "#pragma omp parallel for schedule(static, " 
+                        //       << chunk_size << ")\n";
+
+                         // 4 threads is optimal for writing
+                        writer << "#pragma omp parallel for num_threads(4)\n";
+                    } else {
+                        writer << "#pragma omp parallel for\n";
+                    }
+                    writer << "for (size_t i = 0; i < " << num_elements << "; i++)\n";
+                    writer.block_begin();
+                    writer << "__m512i x = _mm512_stream_load_si512(&src[i]);\n";
+                    writer << "_mm512_stream_si512(&dst[i], x);\n";
+                    writer.block_end();
+                    writer << "_mm_sfence();\n";
+                    writer.block_end();
+                }
+
+                 return;
+            }
+
+            template<>
+            void CPU_Emitter::EMITTER_DECL(ngraph::op::MoveAsync)
+            {
+                // Async moves are emitter
+                writer.block_begin();
+                writer << "// Skipping generation of MoveAsync\n";
                 writer.block_end();
             }
 
