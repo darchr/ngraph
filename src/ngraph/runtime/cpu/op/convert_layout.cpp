@@ -38,6 +38,19 @@ shared_ptr<Node>
         throw ngraph_error("Incorrect number of new arguments");
     }
     return make_shared<ConvertLayout>(new_args.at(0), output_layout);
+} 
+
+runtime::cpu::op::ConvertLayout::ConvertLayout(
+    const shared_ptr<Node> &arg,
+    const shared_ptr<Node> &target,
+    size_t input_index) :
+    ConvertLayout(
+        arg,
+        0,
+        dynamic_pointer_cast<runtime::cpu::LayoutDescriptor>(
+            target->input(input_index).get_tensor().get_tensor_layout())
+        )
+{
 }
 
 runtime::cpu::op::ConvertLayout::ConvertLayout(

@@ -42,6 +42,11 @@ namespace ngraph
                         const std::shared_ptr<ngraph::runtime::cpu::LayoutDescriptor>& layout);
 
                     CPU_BACKEND_API ConvertLayout(
+                        const std::shared_ptr<Node>& arg,
+                        const std::shared_ptr<Node>& target,
+                        size_t input_index);
+
+                    CPU_BACKEND_API ConvertLayout(
                         const Output<Node>& arg,
                         size_t output_index,
                         const std::shared_ptr<ngraph::runtime::cpu::LayoutDescriptor>& layout);

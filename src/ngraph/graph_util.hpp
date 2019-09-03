@@ -437,7 +437,7 @@ namespace ngraph
                                  const std::shared_ptr<Node>& dst_node,
                                  const std::shared_ptr<Node>& new_node);
 
-    void specialinsert_new_node_between(const std::shared_ptr<Node>& src_node,
+    void special_insert_new_node_between(const std::shared_ptr<Node>& src_node,
                                         size_t src_output_index,
                                         const std::shared_ptr<Node>& dst_node,
                                         size_t dst_input_index,
