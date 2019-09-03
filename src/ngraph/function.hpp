@@ -109,6 +109,7 @@ namespace ngraph
         bool has_jl_callback() { return m_jl_callback != nullptr; }
 
         void set_temporary_pool_size(size_t);
+        void set_remote_pool_size(size_t size) { m_remote_pool_size = size; }
         // updates graph and m_results list
         void replace_node(std::shared_ptr<Node> old, std::shared_ptr<Node> repl);
 

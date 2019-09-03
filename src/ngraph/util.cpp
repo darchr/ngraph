@@ -33,6 +33,10 @@
 #include "ngraph/shape.hpp"
 #include "ngraph/util.hpp"
 
+#ifdef NGRAPH_NUMA_ENABLE
+    #include <numa.h>
+#endif
+
 #include <iostream>
 
 using namespace std;
@@ -161,24 +165,61 @@ size_t ngraph::hash_combine(const std::vector<size_t>& list)
     return seed;
 }
 
-void* ngraph::ngraph_malloc(size_t size)
+namespace ngraph
 {
-    auto ptr = malloc(size);
-    if (size != 0 && !ptr)
+    namespace
     {
-        NGRAPH_ERR << "malloc failed to allocate memory of size " << size;
-        throw std::bad_alloc();
+        std::map<void*, size_t> size_map;
     }
-    return ptr;
 }
+#ifdef NGRAPH_NUMA_ENABLE
+    void* ngraph::ngraph_malloc(size_t size)
+    {
+        // Hardcode numa node for now - late make environmental variable
+        auto ptr = numa_alloc_onnode(size, 1);
 
-void ngraph::ngraph_free(void* ptr)
-{
-    if (ptr)
-    {
-        free(ptr);
+        // Save the size of the allocation so we can clean it up later.
+        if (ptr)
+        {
+            size_map[ptr] = size;
+        }
+        if (size != 0 && !ptr)
+        {
+            NGRAPH_ERR << "malloc failed to allocate memory of size " << size;
+            throw std::bad_alloc();
+        }
+        return ptr;
     }
-}
+
+    void ngraph::ngraph_free(void* ptr)
+    {
+        if (ptr)
+        {
+            size_t size = size_map.at(ptr);
+            numa_free(ptr, size);
+            size_map.erase(ptr);
+        }
+    }
+#else
+    void* ngraph::ngraph_malloc(size_t size)
+    {
+        auto ptr = malloc(size);
+        if (size != 0 && !ptr)
+        {
+            NGRAPH_ERR << "malloc failed to allocate memory of size " << size;
+            throw std::bad_alloc();
+        }
+        return ptr;
+    }
+
+    void ngraph::ngraph_free(void* ptr)
+    {
+        if (ptr)
+        {
+            free(ptr);
+        }
+    }
+#endif
 
 size_t ngraph::round_up(size_t size, size_t alignment)
 {

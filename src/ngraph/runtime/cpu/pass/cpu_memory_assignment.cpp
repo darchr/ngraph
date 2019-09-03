@@ -392,7 +392,8 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
             NGRAPH_CHECK(input_buffer_it != m_bufferID_to_tensorSets.end());
             auto pair = input_buffer_it->second;
             if (pair.first != TensorRole::INTERMEDIATE ||
-                in_place_slice_chain.find(input_tensor) != in_place_slice_chain.end())
+                in_place_slice_chain.find(input_tensor) != in_place_slice_chain.end() ||
+                input_tensor->get_pool_number() != output_tensor->get_pool_number())
             {
                 // tensor of function output should not be in the same set as function input,
                 // constant, output, or in place slice, because they cannot share the same memory
@@ -420,7 +421,8 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
                 auto in_place_oi_pairs = op_annotations->get_in_place_oi_pairs();
                 if (in_place_oi_pairs.size() > 0)
                 {
-                    auto cacheable = op_annotations->is_cacheable();
+                    //auto cacheable = op_annotations->is_cacheable();
+                    auto cacheable = false;
 
                     // in place concat
                     if (node->description() == "Concat")
@@ -455,6 +457,12 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
                             {
                                 NGRAPH_DEBUG << "cpu_memory_assignment: no in place concat after "
                                                 "in place slice";
+                                continue;
+                            }
+
+                            if (input_tensor->get_pool_number() != output_tensor->get_pool_number())
+                            {
+                                NGRAPH_DEBUG << "cpu_memory_assignment: no in place concat for different pool numbers";
                                 continue;
                             }
 
@@ -505,6 +513,12 @@ void runtime::cpu::pass::CPUMemoryAssignment::build_buffer_sets_maps(list<shared
                                 bool no_in_place = false;
                                 auto input_node =
                                     node->get_inputs().at(oi_pair.input).get_output().get_node();
+                                
+                                if (input_tensor->get_pool_number() != output_tensor->get_pool_number())
+                                {
+                                    no_in_place = true;
+                                }
+                                
                                 // when reusing memory, check cacheability
                                 if (!m_disable_memory_sharing && input_node->is_op())
                                 {
@@ -661,6 +675,10 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
     ngraph::pass::MemoryManager mm(m_alignment, m_disable_memory_sharing);
     // memory manager for cacheable ops, memory allocation will never be freed
     ngraph::pass::MemoryManager mm_caching(m_alignment, true);
+    // memory manager for pmm ops
+    //
+    // Align to 2 MiB
+    ngraph::pass::MemoryManager mm_pmm(2097152, m_disable_memory_sharing);
 
     // reuse memory
     if (!m_disable_memory_sharing)
@@ -673,7 +691,8 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                 auto op = std::static_pointer_cast<op::Op>(node);
                 if (auto op_annotations = op->get_op_annotations())
                 {
-                    auto cacheable = op_annotations->is_cacheable();
+                    //auto cacheable = op_annotations->is_cacheable();
+                    auto cacheable = false; 
 
                     if (cacheable)
                     {
@@ -710,7 +729,8 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                     auto input_node = node->get_inputs().at(oi_pair.input).get_output().get_node();
 
                     if (oi_pair.destructive && node->liveness_free_list.count(input_tensor) != 0 &&
-                        node->liveness_new_list.count(output_tensor) != 0)
+                        node->liveness_new_list.count(output_tensor) != 0 &&
+                        input_tensor->get_pool_number() == output_tensor->get_pool_number())
                     {
                         if (input_node->is_op())
                         {
@@ -828,7 +848,12 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
             }
             else
             {
-                offset = mm.allocate(size);
+                if (tensor->get_pool_number() == 1)
+                {
+                    offset = mm_pmm.allocate(size);
+                } else {
+                    offset = mm.allocate(size);
+                }
             }
             tensor->set_pool_offset(offset);
             for (auto& e : tensor_set)
@@ -849,7 +874,12 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                 if (m_tensor_caching.empty() ||
                     (!m_tensor_caching.empty() && m_tensor_caching.count(tensor) == 0))
                 {
-                    mm.free(tensor->get_pool_offset());
+                    if (tensor->get_pool_number() == 1)
+                    {
+                        mm_pmm.free(tensor->get_pool_offset());
+                    } else {
+                        mm.free(tensor->get_pool_offset());
+                    }
                 }
             }
         }
@@ -884,6 +914,7 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                  << mm.max_allocated() + mm_caching.max_allocated();
 
     function->set_temporary_pool_size(mm.max_allocated() + mm_caching.max_allocated());
+    function->set_remote_pool_size(mm_pmm.max_allocated());
 
     return false;
 }
