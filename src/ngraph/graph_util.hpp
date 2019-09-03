@@ -224,9 +224,11 @@ namespace ngraph
         std::stack<Node*, std::vector<Node*>> nodes_to_do;
         std::unordered_set<Node*> nodes_done;
         std::list<std::shared_ptr<Node>> result;
+        std::map<Node*, std::vector<Node*>> associates;
 
         // Function for comparing two nodes for priority
         auto cmp = [](Node* a, Node* b){ return a->get_priority() <= b->get_priority(); };
+        auto cmp_inv = [](Node* a, Node* b){ return a->get_priority() > b->get_priority(); };
 
         for (auto& node : root_nodes)
         {
@@ -248,36 +250,78 @@ namespace ngraph
                                nodes.begin(), 
                                [](Input<Node> a){ return a.get_source_output().get_node(); });
 
-                // Nodes iwth a lower priority will be pushed to the stack first - 
-                // scheduling it closer to the parent node.
-                std::sort(nodes.begin(), nodes.end(), cmp);
-
-                // Give control dependencies priority over standard inputs
+                // Add control depedencies to the same queue - we'll sort everything at once.
                 if (include_control_deps)
                 {
                     for (auto& depptr : node->get_control_dependencies())
                     {
                         Node* dep = depptr.get();
-                        if (nodes_done.count(dep) == 0)
-                        {
-                            can_add = false;
-                            nodes_to_do.push(dep);
-                        }
+                        nodes.push_back(dep);
                     }
                 }
+                // Nodes with a lower priority will be pushed to the stack first - 
+                // scheduling it closer to the parent node.
+                std::sort(nodes.begin(), nodes.end(), cmp);
+
                 for (auto dep: nodes) 
                 {
+                    // If this nodes hasn't been scheduled yet.
                     if (nodes_done.count(dep) == 0)
                     {
                         can_add = false;
                         nodes_to_do.push(dep);
+                        
+                        // If the priority of this node is less than zero, create an 
+                        // associate entry for it.
+                        if (dep->get_priority() < 0)
+                        {
+                            auto dep_inputs = node->inputs();
+                            for (auto dep_input: dep_inputs)
+                            {
+                                Node* dep_input_node = dep_input.get_node();
+
+                                // Try to create an empty vector in `associates` for this
+                                // input. `try_emplace` will fail if this already exists,
+                                // which means we can call `push_back` regardless of if it
+                                // works or not.
+                                if (associates.count(dep_input_node) == 0)
+                                {
+                                    associates[dep_input_node] = std::vector<Node*>();
+                                }
+                                std::vector<Node*>& local_associates = associates.at(dep_input_node);
+                                local_associates.push_back(dep);
+                                // Sort the heap in reverse order so when we add them to the
+                                // stack, they are handled correctly.
+                                std::push_heap(local_associates.begin(), 
+                                               local_associates.end(), 
+                                               cmp_inv);
+                            }
+                        }
                     }
                 }
+
                 if (can_add)
                 {
                     result.push_back(node->shared_from_this());
                     nodes_to_do.pop();
                     nodes_done.insert(node);
+
+                    // If this node has associates, add them in reverse order of their
+                    // priority
+                    auto associate_iter = associates.find(node);
+                    if (associate_iter != associates.end())
+                    {
+                        std::vector<Node*> local_associates = associate_iter->second;
+                        while (!local_associates.empty())
+                        {
+                            std::pop_heap(local_associates.begin(), 
+                                          local_associates.end(), 
+                                          cmp_inv);
+
+                            nodes_to_do.push(local_associates.back());
+                            local_associates.pop_back();
+                        }
+                    }
                 }
             }
             else

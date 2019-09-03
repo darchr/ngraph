@@ -8,7 +8,7 @@
 set(PMDK_ROOT_DIR "/usr/local")
 
 find_path(PMDK_INCLUDE_DIRS
-NAMES pmem.h
+NAMES libpmem.h
 HINTS "${PMDK_ROOT_DIR}/include")
 
 find_library(PMDK_LIBRARIES
