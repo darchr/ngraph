@@ -421,8 +421,6 @@ namespace ngraph
         /// \throw std::out_of_range if the node does not have at least `output_index+1` outputs.
         Output<const Node> output(size_t output_index) const;
 
-        /// Because sometimes you just have to YOLO it
-        void nuke_inputs() { m_inputs.clear(); }
         int64_t get_priority() { return m_priority; }
         void set_priority(int64_t p) { m_priority = p; }
 

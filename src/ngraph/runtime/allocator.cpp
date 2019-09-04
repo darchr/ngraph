@@ -65,8 +65,10 @@ public:
         void* ptr;
         if (pool == 0)
         {
+            //std::cout << "PMMAllocator - normal malloc" << std::endl;
             ptr = ngraph::ngraph_malloc(size);
         } else {
+            //std::cout << "PMMAllocator - pmm malloc" << std::endl;
             ptr = ngraph::pmem::pmem_malloc(size);
         }
 
@@ -98,3 +100,9 @@ public:
 private:     
     std::map<void*, size_t> ptr_to_pool;
 };
+
+ngraph::runtime::Allocator* ngraph::runtime::get_pmm_allocator()
+{
+    static PMMAllocator* allocator = new PMMAllocator();
+    return allocator;
+}

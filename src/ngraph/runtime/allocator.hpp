@@ -32,6 +32,7 @@ namespace ngraph
         /// \brief Create a default allocator that calls into system
         ///        allocation libraries
         ngraph::runtime::Allocator* get_default_allocator();
+        ngraph::runtime::Allocator* get_pmm_allocator();
     }
 }
 

@@ -432,7 +432,7 @@ void ngraph::insert_new_node_between(const shared_ptr<Node>& src_node,
 }
 
 // Helper when we already know which outputs or input we want to replace
-void special_insert_new_node_between(const std::shared_ptr<Node>& src_node,
+void ngraph::special_insert_new_node_between(const std::shared_ptr<Node>& src_node,
                                      size_t src_output_index,
                                      const std::shared_ptr<Node>& dst_node,
                                      size_t dst_input_index,

@@ -29,6 +29,7 @@ set(SRC
     cpu_call_frame.cpp
     cpu_executor.cpp
     cpu_external_function.cpp
+    cpu_helper.cpp
     cpu_kernels.cpp
     cpu_layout_descriptor.cpp
     cpu_op_annotations.cpp

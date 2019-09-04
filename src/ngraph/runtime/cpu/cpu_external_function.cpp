@@ -796,7 +796,7 @@ using namespace ngraph::runtime;
     if (pmm_used)
     {
         writer << "size_t pmm_base_ptr = (size_t) ctx->memory_buffers["
-               << m_memory_buffer_sizes.size() - 2 << "]->get_pter();\n";
+               << m_memory_buffer_sizes.size() - 2 << "]->get_ptr();\n";
         writer << "\n";
     }
 

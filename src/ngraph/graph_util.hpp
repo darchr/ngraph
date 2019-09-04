@@ -241,7 +241,7 @@ namespace ngraph
             {
                 bool can_add = true;
                 auto inputs = node->inputs();
-                std::vector<Node*> nodes;
+                std::vector<Node*> nodes = std::vector<Node*>(inputs.size());
 
                 // Need to go from vector<Input<Node>> to vector<Node*> in order to sort
                 // by priority.

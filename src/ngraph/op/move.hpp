@@ -16,6 +16,7 @@ namespace ngraph
                 copy_with_new_args(const NodeVector& new_args) const override;
 
             size_t get_n() const { return m_n; }
+            static const std::string type_name;
 
             // TODO: Maybe implement this
             //
@@ -43,6 +44,7 @@ namespace ngraph
             size_t get_n() const { return m_n; }
 
             const std::shared_ptr<Node>& get_fellow() { return m_across; }
+            static const std::string type_name;
 
             // TODO: Maybe implement this
             //
