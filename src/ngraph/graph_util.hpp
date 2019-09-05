@@ -261,7 +261,7 @@ namespace ngraph
                 }
                 // Nodes with a lower priority will be pushed to the stack first - 
                 // scheduling it closer to the parent node.
-                std::sort(nodes.begin(), nodes.end(), cmp);
+                std::sort(nodes.begin(), nodes.end(), cmp_inv);
 
                 for (auto dep: nodes) 
                 {
@@ -275,10 +275,10 @@ namespace ngraph
                         // associate entry for it.
                         if (dep->get_priority() < 0)
                         {
-                            auto dep_inputs = node->inputs();
+                            auto dep_inputs = dep->inputs();
                             for (auto dep_input: dep_inputs)
                             {
-                                Node* dep_input_node = dep_input.get_node();
+                                Node* dep_input_node = dep_input.get_source_output().get_node();
 
                                 // Try to create an empty vector in `associates` for this
                                 // input. `try_emplace` will fail if this already exists,
@@ -311,6 +311,7 @@ namespace ngraph
                     auto associate_iter = associates.find(node);
                     if (associate_iter != associates.end())
                     {
+                        //std::cout << "Adding Associates for node: " << node->get_name() << std::endl;
                         std::vector<Node*> local_associates = associate_iter->second;
                         while (!local_associates.empty())
                         {
@@ -318,7 +319,9 @@ namespace ngraph
                                           local_associates.end(), 
                                           cmp_inv);
 
-                            nodes_to_do.push(local_associates.back());
+                            Node* associate = local_associates.back();
+                            //std::cout << "    " << associate->get_name() << std::endl;
+                            nodes_to_do.push(associate);
                             local_associates.pop_back();
                         }
                     }

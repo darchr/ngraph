@@ -17,6 +17,7 @@ namespace ngraph
 
             size_t get_n() const { return m_n; }
             static const std::string type_name;
+            const std::string& description() const override { return type_name; }
 
             // TODO: Maybe implement this
             //
@@ -45,6 +46,7 @@ namespace ngraph
 
             const std::shared_ptr<Node>& get_fellow() { return m_across; }
             static const std::string type_name;
+            const std::string& description() const override { return type_name; }
 
             // TODO: Maybe implement this
             //

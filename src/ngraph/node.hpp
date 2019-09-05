@@ -343,12 +343,11 @@ namespace ngraph
         // Will be deprecated
         std::shared_ptr<Node> get_argument(size_t index) const;
 
-        // MARK: Move copy_with_new_args back to public for the time being.
-//    protected:
-//
-    public:
+    protected:
         // Will be replaced with an OutputVector version
         virtual std::shared_ptr<Node> copy_with_new_args(const NodeVector& new_args) const = 0;
+
+    public:
 
         std::shared_ptr<Node> copy_with_new_inputs(const OutputVector& new_args) const;
 

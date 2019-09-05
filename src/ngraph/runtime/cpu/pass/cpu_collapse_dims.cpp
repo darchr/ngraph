@@ -241,6 +241,7 @@ bool runtime::cpu::pass::CPUCollapseDims::run_on_function(std::shared_ptr<ngraph
     bool replaced = false;
     for (auto n : f->get_ordered_ops())
     {
+        NGRAPH_DEBUG << "NODE NAME: " << n->get_name();
         if (std::dynamic_pointer_cast<op::Broadcast>(n))
         {
             replaced |= collapse_broadcast(n);

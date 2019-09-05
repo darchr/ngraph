@@ -4,8 +4,8 @@
 using namespace std;
 using namespace ngraph;
 
-const string op::Move::type_name("Move");
-const string op::MoveAsync::type_name("MoveAsync");
+const string op::Move::type_name{"Move"};
+const string op::MoveAsync::type_name{"MoveAsync"};
 
 // MARK: Note - these are meant to be inserted after most compiler passes run.
 //
