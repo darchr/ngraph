@@ -22,6 +22,8 @@ set (SRC
     axis_set.hpp
     axis_vector.cpp
     axis_vector.hpp
+    backtrace.cpp
+    backtrace.hpp
     builder/autobroadcast.cpp
     builder/autobroadcast.hpp
     builder/dequantize_builder.cpp

@@ -28,6 +28,7 @@
 #include "ngraph/op/parameter.hpp"
 #include "ngraph/op/result.hpp"
 #include "ngraph/placement.hpp"
+#include "ngraph/backtrace.hpp"
 
 using namespace std;
 using namespace ngraph;

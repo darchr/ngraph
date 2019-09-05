@@ -67,9 +67,9 @@ runtime::cpu::op::ConvertLayout::ConvertLayout(
 
 void runtime::cpu::op::ConvertLayout::validate_and_infer_types()
 {
-    const auto& arg = get_argument(0);
-
-    const auto& arg_tensor = arg->get_output_tensor_ptr(arg_output_index);
+    //const auto& arg = get_argument(0);
+    //const auto& arg_tensor = arg->get_output_tensor_ptr(arg_output_index);
+    const auto& arg_tensor = input(0).get_tensor_ptr();
     const auto& arg_layout = arg_tensor->get_tensor_layout();
 
     if (!arg_layout)

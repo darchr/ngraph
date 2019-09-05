@@ -23,7 +23,6 @@ shared_ptr<Node> op::Move::copy_with_new_args(const NodeVector& new_args) const
 
 op::Move::Move(const shared_ptr<Node>& input, size_t n)
     : Op({Output<Node>{input, n}})
-    //: Op("Move", {input})
     , m_n{n}
 {
     constructor_validate_and_infer_types();

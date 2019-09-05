@@ -503,6 +503,7 @@ void runtime::cpu::CPU_ExternalFunction::compile(ngraph::pass::PassConfig& pass_
     pass_manager.register_pass<ngraph::pass::CommonFunctionCollection>(
         femitter, node_function_map, common_function_string);
     pass_manager.run_passes(m_function);
+    NGRAPH_DEBUG << "DONE RUNNING PASSES";
 
     list<shared_ptr<Node>> ordered_ops = m_function->get_ordered_ops();
 
@@ -1292,7 +1293,7 @@ void runtime::cpu::CPU_ExternalFunction::register_common_passes(
         CommonSubexpressionElimination, true, ngraph::pass, runtime::cpu::get_cse_handlers_map());
     REGISTER_KNOBBED_PASS(CPUPostLayoutOptimizations, true, runtime::cpu::pass);
     REGISTER_KNOBBED_PASS(CPUMemoryOptimization, true, runtime::cpu::pass);
-    REGISTER_KNOBBED_PASS(GetOutputElementElimination, false, ngraph::pass);
+    REGISTER_KNOBBED_PASS(GetOutputElementElimination, true, ngraph::pass);
     REGISTER_KNOBBED_PASS_WITH_ARGS(
         PropagateCacheability, true, ngraph::pass, runtime::cpu::get_annotations_factory());
     bool reuse_memory = pass_config.get_pass_attribute("CPUMemoryAssignment::ReuseMemory") ||
@@ -1443,7 +1444,6 @@ void runtime::cpu::CPU_ExternalFunction::build(ngraph::pass::PassConfig& pass_co
     ngraph::pass::Manager pass_manager;
     register_common_passes(pass_manager, pass_config);
     pass_manager.run_passes(m_function, false);
-
     static runtime::cpu::CPU_DebugTracer debug_tracer;
     if (std::getenv("NGRAPH_CPU_DEBUG_TRACER") != nullptr)
     {
