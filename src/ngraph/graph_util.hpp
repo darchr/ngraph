@@ -216,6 +216,95 @@ namespace ngraph
 
     NodeVector find_common_args(std::shared_ptr<Node> target, std::shared_ptr<Node> replacement);
 
+    template <typename T>
+    std::list<std::shared_ptr<Node>> _topological_sort(const T& nodes,
+                                                      bool include_control_deps = false)
+    {
+        std::deque<ngraph::Node*> independent_nodes;
+        std::unordered_map<const ngraph::Node*, size_t> node_dependency_count;
+        std::unordered_map<ngraph::Node*, std::shared_ptr<ngraph::Node>> node_map;
+        std::unordered_map<ngraph::Node*, std::set<Node*>> control_deps_users;
+
+        // Function for comparing priority of two nodes
+        //
+        // use >= so that lower priority numbers get interpreted as the "highest" in the 
+        // heap and will thus be returned first.
+        auto comp = [](Node* a, Node*b){ return a->get_priority() >= b->get_priority(); };
+
+        for (auto node : nodes)
+        {
+            //build an equivalent of node->get_users() but for control dependencies
+            size_t control_deps_count = 0;
+            if (include_control_deps)
+            {
+                for (auto cd : node->get_control_dependencies())
+                {
+                    control_deps_count++;
+                    control_deps_users[cd.get()].insert(node.get());
+                }
+            }
+
+            node_map[node.get()] = node;
+            size_t deps_count = node->inputs().size() + control_deps_count;
+            node_dependency_count[node.get()] = deps_count;
+            if (deps_count == 0)
+            {
+                independent_nodes.push_back(node.get());
+            }
+        }
+
+        // Make `independent_nodes` into a heap
+        std::make_heap(independent_nodes.begin(), independent_nodes.end(), comp); 
+
+        std::list<std::shared_ptr<ngraph::Node>> result_list;
+        while (independent_nodes.size() > 0)
+        {
+            std::pop_heap(independent_nodes.begin(), independent_nodes.end(), comp);
+            auto independent_node = independent_nodes.back();
+            result_list.push_back(node_map.at(independent_node));
+            independent_nodes.pop_back();
+
+            //std::cout << "Processing Node: " << independent_node->get_name() << ": " << independent_node << std::endl;
+
+            for (auto& output : independent_node->outputs())
+            {
+                for (auto& input : output.get_target_inputs())
+                {
+                    Node* user = input.get_node();
+                    //std::cout << "    User: " << user->get_name() << ": " << user << std::endl;
+                    node_dependency_count[user] -= 1;
+                    size_t count = node_dependency_count[user];
+                    if (count == 0)
+                    {
+                        independent_nodes.push_back(user);
+                        std::push_heap(independent_nodes.begin(), independent_nodes.end(), comp);
+                    }
+                }
+            }
+
+            if (include_control_deps)
+            {
+                auto cdit = control_deps_users.find(independent_node);
+                if (cdit != control_deps_users.end())
+                {
+                    for (auto cd_user : cdit->second)
+                    {
+                        node_dependency_count[cd_user] -= 1;
+                        size_t count = node_dependency_count[cd_user];
+                        if (count == 0)
+                        {
+                            independent_nodes.push_back(cd_user);
+                            std::push_heap(independent_nodes.begin(), independent_nodes.end(), comp);
+                        }
+                    }
+                }
+            }
+        }
+
+        NGRAPH_CHECK(nodes.size() == result_list.size());
+        return result_list;
+    }
+
     /// Topological sort of nodes needed to compute root_nodes
     template <typename T>
     std::list<std::shared_ptr<Node>> topological_sort(T root_nodes,
@@ -224,11 +313,6 @@ namespace ngraph
         std::stack<Node*, std::vector<Node*>> nodes_to_do;
         std::unordered_set<Node*> nodes_done;
         std::list<std::shared_ptr<Node>> result;
-        std::map<Node*, std::vector<Node*>> associates;
-
-        // Function for comparing two nodes for priority
-        auto cmp = [](Node* a, Node* b){ return a->get_priority() <= b->get_priority(); };
-        auto cmp_inv = [](Node* a, Node* b){ return a->get_priority() > b->get_priority(); };
 
         for (auto& node : root_nodes)
         {
@@ -240,91 +324,33 @@ namespace ngraph
             if (nodes_done.count(node) == 0)
             {
                 bool can_add = true;
-                auto inputs = node->inputs();
-                std::vector<Node*> nodes = std::vector<Node*>(inputs.size());
-
-                // Need to go from vector<Input<Node>> to vector<Node*> in order to sort
-                // by priority.
-                std::transform(inputs.begin(), 
-                               inputs.end(), 
-                               nodes.begin(), 
-                               [](Input<Node> a){ return a.get_source_output().get_node(); });
-
-                // Add control depedencies to the same queue - we'll sort everything at once.
+                size_t arg_count = node->get_input_size();
+                for (size_t i = 0; i < arg_count; ++i)
+                {
+                    Node* dep = node->input(arg_count - i - 1).get_source_output().get_node();
+                    if (nodes_done.count(dep) == 0)
+                    {
+                        can_add = false;
+                        nodes_to_do.push(dep);
+                    }
+                }
                 if (include_control_deps)
                 {
                     for (auto& depptr : node->get_control_dependencies())
                     {
                         Node* dep = depptr.get();
-                        nodes.push_back(dep);
-                    }
-                }
-                // Nodes with a lower priority will be pushed to the stack first - 
-                // scheduling it closer to the parent node.
-                std::sort(nodes.begin(), nodes.end(), cmp_inv);
-
-                for (auto dep: nodes) 
-                {
-                    // If this nodes hasn't been scheduled yet.
-                    if (nodes_done.count(dep) == 0)
-                    {
-                        can_add = false;
-                        nodes_to_do.push(dep);
-                        
-                        // If the priority of this node is less than zero, create an 
-                        // associate entry for it.
-                        if (dep->get_priority() < 0)
+                        if (nodes_done.count(dep) == 0)
                         {
-                            auto dep_inputs = dep->inputs();
-                            for (auto dep_input: dep_inputs)
-                            {
-                                Node* dep_input_node = dep_input.get_source_output().get_node();
-
-                                // Try to create an empty vector in `associates` for this
-                                // input. `try_emplace` will fail if this already exists,
-                                // which means we can call `push_back` regardless of if it
-                                // works or not.
-                                if (associates.count(dep_input_node) == 0)
-                                {
-                                    associates[dep_input_node] = std::vector<Node*>();
-                                }
-                                std::vector<Node*>& local_associates = associates.at(dep_input_node);
-                                local_associates.push_back(dep);
-                                // Sort the heap in reverse order so when we add them to the
-                                // stack, they are handled correctly.
-                                std::push_heap(local_associates.begin(), 
-                                               local_associates.end(), 
-                                               cmp_inv);
-                            }
+                            can_add = false;
+                            nodes_to_do.push(dep);
                         }
                     }
                 }
-
                 if (can_add)
                 {
                     result.push_back(node->shared_from_this());
                     nodes_to_do.pop();
                     nodes_done.insert(node);
-
-                    // If this node has associates, add them in reverse order of their
-                    // priority
-                    auto associate_iter = associates.find(node);
-                    if (associate_iter != associates.end())
-                    {
-                        //std::cout << "Adding Associates for node: " << node->get_name() << std::endl;
-                        std::vector<Node*> local_associates = associate_iter->second;
-                        while (!local_associates.empty())
-                        {
-                            std::pop_heap(local_associates.begin(), 
-                                          local_associates.end(), 
-                                          cmp_inv);
-
-                            Node* associate = local_associates.back();
-                            //std::cout << "    " << associate->get_name() << std::endl;
-                            nodes_to_do.push(associate);
-                            local_associates.pop_back();
-                        }
-                    }
                 }
             }
             else
@@ -332,8 +358,9 @@ namespace ngraph
                 nodes_to_do.pop();
             }
         }
-        return result;
+        return _topological_sort(result, include_control_deps);
     }
+
 
     /// Topological sort of just nodes
     template <typename T>
