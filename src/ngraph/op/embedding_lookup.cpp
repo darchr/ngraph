@@ -15,6 +15,7 @@
 //*****************************************************************************
 
 #include "ngraph/op/embedding_lookup.hpp"
+#include "ngraph/op/reshape.hpp"
 
 using namespace std;
 using namespace ngraph;
@@ -58,4 +59,27 @@ shared_ptr<Node> op::EmbeddingLookup::copy_with_new_args(const NodeVector& new_a
 {
     check_new_args_count(this, new_args);
     return make_shared<EmbeddingLookup>(new_args.at(0), new_args.at(1));
+}
+
+void op::EmbeddingLookup::generate_adjoints(autodiff::Adjoints& adjoints, const NodeVector& deltas)
+{
+    auto delta = deltas.at(0);
+
+    auto data = input_value(0);
+    auto weights = input_value(1);
+
+
+    // We need to transpose the deltas so we can reuse embedding lookup to get the adjoints
+    auto delta_shape = delta->get_shape();
+    AxisVector input_order;
+    Shape output_shape;
+    for (size_t i = delta_shape.size() - 1; i >= 0; i--)
+    {
+        input_order.push_back(i);
+        output_shape.push_back(delta_shape[i]);
+    }
+    auto transpose_delta = make_shared<op::Reshape>(delta, input_order, output_shape);
+
+    adjoints.add_delta(weights, make_shared<op::EmbeddingLookup>(data, transpose_delta));
+    //adjoints.add_delta(data, 
 }
