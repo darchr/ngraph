@@ -50,9 +50,6 @@ namespace ngraph
             void validate_and_infer_types() override;
 
             void generate_adjoints(autodiff::Adjoints& adjoints, const NodeVector& deltas) override;
-            //{
-            //    throw ngraph_error("Not yet implemented");
-            //}
 
             virtual std::shared_ptr<Node>
                 copy_with_new_args(const NodeVector& new_args) const override;

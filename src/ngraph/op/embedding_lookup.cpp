@@ -14,7 +14,11 @@
 // limitations under the License.
 //*****************************************************************************
 
+#include "ngraph/log.hpp"
+#include "ngraph/op/convert.hpp"
+#include "ngraph/op/dot.hpp"
 #include "ngraph/op/embedding_lookup.hpp"
+#include "ngraph/op/one_hot.hpp"
 #include "ngraph/op/reshape.hpp"
 
 using namespace std;
@@ -68,18 +72,14 @@ void op::EmbeddingLookup::generate_adjoints(autodiff::Adjoints& adjoints, const 
     auto data = input_value(0);
     auto weights = input_value(1);
 
+    // The hack we use here is to transpose the indices and expand them using the "one_hot"
+    // operator.
+    //const PartialShape output_shape = weights.get_shape();
+    Shape output_shape; 
+    output_shape.push_back(weights.get_shape().at(1));
+    output_shape.push_back(data.get_shape().at(0));
 
-    // We need to transpose the deltas so we can reuse embedding lookup to get the adjoints
-    auto delta_shape = delta->get_shape();
-    AxisVector input_order;
-    Shape output_shape;
-    for (size_t i = delta_shape.size() - 1; i >= 0; i--)
-    {
-        input_order.push_back(i);
-        output_shape.push_back(delta_shape[i]);
-    }
-    auto transpose_delta = make_shared<op::Reshape>(delta, input_order, output_shape);
-
-    adjoints.add_delta(weights, make_shared<op::EmbeddingLookup>(data, transpose_delta));
-    //adjoints.add_delta(data, 
+    auto data_expand_transpose = make_shared<OneHot>(data, output_shape, 0);
+    auto converted = make_shared<Convert>(data_expand_transpose, weights.get_element_type());
+    adjoints.add_delta(weights, make_shared<op::Dot>(converted, delta));
 }
