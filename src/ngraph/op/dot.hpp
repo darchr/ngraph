@@ -19,9 +19,14 @@
 #include <utility>
 
 #include "ngraph/op/op.hpp"
+#include "ngraph/op/reshape.hpp"
 
 namespace ngraph
 {
+    std::shared_ptr<ngraph::op::Reshape> make_reshape_axes_to_front(const Output<Node>& n,
+                                                                    const Shape& front_shape,
+                                                                    const Shape& back_shape);
+
     namespace op
     {
         /// \brief Generalized dot product operation, including scalar-tensor product, matrix-vector

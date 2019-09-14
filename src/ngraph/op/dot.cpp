@@ -153,7 +153,7 @@ void op::Dot::validate_and_infer_types()
     set_output_type(0, result_et, result_shape);
 }
 
-shared_ptr<op::Reshape> make_reshape_axes_to_front(const Output<Node>& n,
+shared_ptr<op::Reshape> ngraph::make_reshape_axes_to_front(const Output<Node>& n,
                                                    const Shape& front_shape,
                                                    const Shape& back_shape)
 {
