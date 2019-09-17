@@ -44,6 +44,15 @@ namespace ngraph
                                  const Shape& out_shape,
                                  const size_t concatenation_axis);
 
+                void emit_onehot(CodeWriter& writer,
+                                 const std::string& arg0_element_type,
+                                 const std::string& arg0,
+                                 const std::string& out_element_type,
+                                 const std::string& out,
+                                 const Shape& arg0_shape,
+                                 const Shape& out_shape,
+                                 size_t onehot_axis);
+
                 void emit_replace_slice(CodeWriter& writer,
                                         const std::string& element_type,
                                         const std::string& arg0, // replacement context

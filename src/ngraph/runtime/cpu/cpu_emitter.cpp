@@ -1036,12 +1036,12 @@ namespace ngraph
 
                     // Quick check for now. In the future, I'll move this into the Move node
                     // itself. Basically, if we're writing to PMEM, we only want 4 threads
-                    // running. We do this by using a chunks size 1/4th the size of the 
+                    // running. We do this by using a chunks size 1/4th the size of the
                     // total array
                     if (out[0].get_tensor()->get_pool_number() == 1)
                     {
                         //size_t chunk_size = num_elements / 4;
-                        //writer << "#pragma omp parallel for schedule(static, " 
+                        //writer << "#pragma omp parallel for schedule(static, "
                         //       << chunk_size << ")\n";
 
                          // 4 threads is optimal for writing
@@ -2184,12 +2184,40 @@ namespace ngraph
                 // Other cases are not handled yet.
                 else
                 {
-                    writer << "reference::one_hot<" << out[0].get_type() << ">("
-                           << args[0].get_name() << ",\n";
-                    writer << "                   " << out[0].get_name() << ",\n";
-                    writer << "                   {" << join(args[0].get_shape()) << "},\n";
-                    writer << "                   {" << join(out[0].get_shape()) << "},\n";
-                    writer << "                   " << oh->get_one_hot_axis() << ");\n";
+                    // MARK: Custom OneHot logic
+
+                    // Get the element type of the output to construct a zero.
+                    //const element::Type& out_et = out[0].get_element_type();
+                    size_t bytes = out[0].get_tensor()->size();
+                    // Trick using integer arithmetic to round up.
+                    size_t num_elements = (bytes + 64 - 1) / 64;
+
+                    writer.block_begin();
+                    // Zero the output vector - rely on the alignment of allocation block
+                    // sizes to use AvX 512
+                    writer << "__m512i zero = {0};\n";
+                    writer << "__m512i* output_vector_view = reinterpret_cast<__m512i*>("
+                           << out[0].get_name() << ");\n";
+
+                    writer << "#pragma omp parallel for\n";
+                    writer << "for (size_t i = 0; i < " << num_elements << "; i++)\n";
+                    writer.block_begin();
+                    writer << "_mm512_stream_si512(&output_vector_view[i], zero);\n";
+                    writer.block_end();
+
+                    // Now that we've zeroed the output - we emit for loops for each 
+                    // dimension of the input vector and extrude the output vector.
+                    kernel::emit_onehot(writer,
+                                        args[0].get_element_type().c_type_string(),
+                                        args[0].get_name(),
+                                        out[0].get_element_type().c_type_string(),
+                                        out[0].get_name(),
+                                        args[0].get_shape(),
+                                        out[0].get_shape(),
+                                        oh->get_one_hot_axis()
+                                        );
+
+                    writer.block_end();
                 }
             }
 

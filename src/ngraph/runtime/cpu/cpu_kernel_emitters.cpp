@@ -137,6 +137,7 @@ void ngraph::runtime::cpu::kernel::emit_broadcast(CodeWriter& writer,
     close_for_loops(writer, index_vars);
 }
 
+
 //
 // For the reference kernel this is based on, see ngraph/runtime/reference/concat.hpp.
 //
@@ -171,6 +172,42 @@ void ngraph::runtime::cpu::kernel::emit_concat(CodeWriter& writer,
 
         concatenation_pos += in_shapes[i][concatenation_axis];
     }
+}
+
+void ngraph::runtime::cpu::kernel::emit_onehot(CodeWriter& writer,
+                                                const string& arg0_element_type,
+                                                const string& arg0,
+                                                const string& out_element_type,
+                                                const string& out,
+                                                const Shape& arg0_shape,
+                                                const Shape& out_shape,
+                                                size_t onehot_axis)
+{
+    // create input and output arrays
+    auto source_nd_name = recast_tmp_var(writer, arg0_element_type, arg0, arg0_shape, "source_nd");
+    auto dest_nd_name = recast_tmp_var(writer, out_element_type, out, out_shape, "dest_nd");
+
+    // Create the for loops
+    auto index_vars = open_for_loops(writer, arg0_shape); 
+
+    // Create indexing logic.
+    vector<string> dest_indexes;  
+    size_t j = 0;
+    for (size_t i = 0; i < out_shape.size(); ++i)
+    {
+        if (i == onehot_axis)
+        {
+            dest_indexes.push_back("x");
+        } else {
+            dest_indexes.push_back(index_vars[j]);
+            j++;
+        }
+    }
+    writer << arg0_element_type << " x = " 
+           << source_nd_name << emit_bracketed_string(index_vars) << ";\n";
+
+    writer << dest_nd_name << emit_bracketed_string(dest_indexes) << " = 1;\n";
+    close_for_loops(writer, index_vars);
 }
 
 void ngraph::runtime::cpu::kernel::emit_replace_slice(CodeWriter& writer,
