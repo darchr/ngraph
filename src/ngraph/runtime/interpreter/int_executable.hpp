@@ -832,6 +832,10 @@ private:
             }
             break;
         }
+        case OP_TYPEID::EmbeddingLookupBackprop:{
+            throw ngraph_error("Move not supported");
+            break;
+        }
         case OP_TYPEID::Equal:
         {
             auto equal = static_cast<const op::Equal*>(&node);

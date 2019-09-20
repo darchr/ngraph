@@ -54,5 +54,31 @@ namespace ngraph
             virtual std::shared_ptr<Node>
                 copy_with_new_args(const NodeVector& new_args) const override;
         };
+
+        class EmbeddingLookupBackprop : public Op
+        {
+        public:
+            NGRAPH_API
+            static const std::string type_name;
+            const std::string& description() const override { return type_name; }
+
+            EmbeddingLookupBackprop() = default;
+
+            EmbeddingLookupBackprop(const Output<Node>& data, 
+                    const Output<Node>& delta,
+                    const Shape& out_shape)
+                : Op({data, delta})
+                , embedding_shape(out_shape)
+            {
+                constructor_validate_and_infer_types();
+            }
+
+            void validate_and_infer_types() override;
+
+            virtual std::shared_ptr<Node>
+                copy_with_new_args(const NodeVector& new_args) const override;
+        private:
+            Shape embedding_shape;
+        };
     }
 }

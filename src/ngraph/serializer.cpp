@@ -1178,6 +1178,10 @@ shared_ptr<Node> JSONDeserializer::deserialize_node(json node_js)
             node = make_shared<op::EmbeddingLookup>(args[0], args[1]);
             break;
         }
+        case OP_TYPEID::EmbeddingLookupBackprop:
+        {
+            throw ngraph_error("Move Not supported for serialization");
+        }
         case OP_TYPEID::Equal:
         {
             node = make_shared<op::Equal>(args[0], args[1], read_auto_broadcast(node_js, "autob"));
@@ -2380,6 +2384,8 @@ json JSONSerializer::serialize_node(const Node& n)
         break;
     }
     case OP_TYPEID::EmbeddingLookup: { break;
+    }
+    case OP_TYPEID::EmbeddingLookupBackprop: { break;
     }
     case OP_TYPEID::Equal:
     {

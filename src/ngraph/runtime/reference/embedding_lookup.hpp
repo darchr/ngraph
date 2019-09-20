@@ -45,6 +45,41 @@ namespace ngraph
                     out_iter += vec_len;
                 }
             }
+
+            template <typename T, typename U>
+            void embedding_backprop(const U* indices, 
+                                    const T* deltas,
+                                    T* out,
+                                    size_t indices_count,
+                                    const Shape& out_shape)
+            {
+                // Zero out the output
+                #pragma omp parallel for
+                for (size_t i = 0; i < shape_size(out_shape); i++)
+                {
+                    out[i] = 0;
+                }
+
+                // Indices and deltas should have the same size except for the last 
+                // dimension.
+                //
+                // We will iterate over both to perform the update.
+                size_t vec_len = out_shape.at(1);
+                T* out_iter;
+
+                for (size_t i = 0; i < indices_count; i++)
+                {
+                    // Get the position in the look up table.
+                    out_iter = out + vec_len * indices[i];
+
+                    // Update the vectors
+                    for (size_t j = 0; j < vec_len; j++)  
+                    {
+                        out_iter[j] += deltas[vec_len * i + j];
+                    }
+                }
+            }
+
         }
     }
 }

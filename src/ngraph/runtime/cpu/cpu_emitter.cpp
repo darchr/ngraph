@@ -1723,6 +1723,27 @@ namespace ngraph
             }
 
             template <>
+            void CPU_Emitter::EMITTER_DECL(ngraph::op::EmbeddingLookupBackprop)
+            {
+                writer.block_begin();
+                const ngraph::op::EmbeddingLookupBackprop* embed =
+                    static_cast<const ngraph::op::EmbeddingLookupBackprop*>(node);
+                auto index_type_name = embed->get_argument(0)->get_element_type().c_type_string();
+                auto type_name = embed->get_element_type().c_type_string();
+                auto element_count = shape_size(embed->get_argument(0)->get_shape());
+
+                writer << "reference::embedding_backprop<" << type_name << "," 
+                       << index_type_name << ">(";
+
+                writer << "            " << args[0].get_name() << ",\n";
+                writer << "            " << args[1].get_name() << ",\n";
+                writer << "            " << out[0].get_name() << ",\n";
+                writer << "            " << element_count << ",\n";
+                writer << "           {" << join(out[0].get_shape()) << "});\n";
+                writer.block_end();
+            }
+
+            template <>
             void CPU_Emitter::EMITTER_DECL(ngraph::op::Sin)
             {
                 writer.block_begin();

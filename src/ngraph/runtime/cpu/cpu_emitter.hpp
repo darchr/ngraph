@@ -78,6 +78,7 @@ namespace ngraph
         class Sum;
         class Exp;
         class EmbeddingLookup;
+        class EmbeddingLookupBackprop;
         class Sin;
         class Sinh;
         class Cos;
@@ -292,6 +293,8 @@ namespace ngraph
             void CPU_Emitter::EMITTER_DECL(ngraph::op::Exp);
             template <>
             void CPU_Emitter::EMITTER_DECL(ngraph::op::EmbeddingLookup);
+            template <>
+            void CPU_Emitter::EMITTER_DECL(ngraph::op::EmbeddingLookupBackprop);
             template <>
             void CPU_Emitter::EMITTER_DECL(ngraph::op::Sin);
             template <>
