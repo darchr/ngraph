@@ -49,15 +49,19 @@ namespace ngraph
             template <typename T, typename U>
             void embedding_backprop(const U* indices, 
                                     const T* deltas,
+                                    T* in,
                                     T* out,
                                     size_t indices_count,
                                     const Shape& out_shape)
             {
-                // Zero out the output
-                #pragma omp parallel for
-                for (size_t i = 0; i < shape_size(out_shape); i++)
+                // If the input and output pointers alias - no need to copy.
+                if (in != out)
                 {
-                    out[i] = 0;
+                    #pragma omp parallel for
+                    for (size_t i = 0; i < shape_size(out_shape); i++)
+                    {
+                        out[i] = in[i];
+                    }
                 }
 
                 // Indices and deltas should have the same size except for the last 

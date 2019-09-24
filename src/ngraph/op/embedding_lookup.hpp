@@ -64,11 +64,12 @@ namespace ngraph
 
             EmbeddingLookupBackprop() = default;
 
-            EmbeddingLookupBackprop(const Output<Node>& data, 
+            EmbeddingLookupBackprop(
+                    const Output<Node>& data, 
                     const Output<Node>& delta,
-                    const Shape& out_shape)
-                : Op({data, delta})
-                , embedding_shape(out_shape)
+                    const Output<Node>& weights)
+                : Op({data, delta, weights})
+                , embedding_shape(weights.get_shape())
             {
                 constructor_validate_and_infer_types();
             }

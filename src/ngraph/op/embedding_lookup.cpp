@@ -72,7 +72,7 @@ void op::EmbeddingLookup::generate_adjoints(autodiff::Adjoints& adjoints, const 
     auto data = input_value(0);
     auto weights = input_value(1);
 
-    auto update = make_shared<EmbeddingLookupBackprop>(data, delta, weights.get_shape());
+    auto update = make_shared<EmbeddingLookupBackprop>(data, delta, weights);
     adjoints.add_delta(weights, update);
 }
 
@@ -117,5 +117,5 @@ void op::EmbeddingLookupBackprop::validate_and_infer_types()
 shared_ptr<Node> op::EmbeddingLookupBackprop::copy_with_new_args(const NodeVector& new_args) const
 {
     check_new_args_count(this, new_args);
-    return make_shared<EmbeddingLookupBackprop>(new_args.at(0), new_args.at(1), embedding_shape);
+    return make_shared<EmbeddingLookupBackprop>(new_args.at(0), new_args.at(1), new_args.at(2));
 }

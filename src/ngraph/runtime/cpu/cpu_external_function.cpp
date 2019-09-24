@@ -15,6 +15,7 @@
 //*****************************************************************************
 
 #include <cstdlib>
+#include <algorithm>
 #include <fstream>
 #include <memory>
 #include <string>
@@ -710,22 +711,26 @@ using namespace ngraph::runtime;
 
     // Check if PMM is used
     bool pmm_used = false; 
-    for (shared_ptr<Node> node : ordered_ops)
+    if (m_function->get_remote_pool_size() != 0)
     {
-        if (!node->is_parameter() && !node->is_constant())
-        {
-            for (const descriptor::Input& input : node->get_inputs())
-            {
-                const descriptor::Output& output = input.get_output();
-                shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
-                // TODO: Move back to enums for pool numbers
-                if (tv->get_pool_number() == 1)
-                {
-                    pmm_used = true;
-                }
-            }
-        }
+        pmm_used = true;
     }
+    // for (shared_ptr<Node> node : ordered_ops)
+    // {
+    //     if (!node->is_parameter() && !node->is_constant())
+    //     {
+    //         for (const descriptor::Input& input : node->get_inputs())
+    //         {
+    //             const descriptor::Output& output = input.get_output();
+    //             shared_ptr<descriptor::Tensor> tv = output.get_tensor_ptr();
+    //             // TODO: Move back to enums for pool numbers
+    //             if (tv->get_pool_number() == 1)
+    //             {
+    //                 pmm_used = true;
+    //             }
+    //         }
+    //     }
+    // }
     if (pmm_used)
     {
         m_memory_buffer_sizes.push_back(m_function->get_remote_pool_size());
@@ -797,8 +802,12 @@ using namespace ngraph::runtime;
 
     if (pmm_used)
     {
+        // Do a quick check so we don't accidentally wrap a 64 bit unsigned int.
+        int64_t buffer_size = m_memory_buffer_sizes.size();
+        const int64_t zero_literal = 0;
+        int64_t idx = std::max(buffer_size - 2, zero_literal);
         writer << "size_t pmm_base_ptr = (size_t) ctx->memory_buffers["
-               << m_memory_buffer_sizes.size() - 2 << "]->get_ptr();\n";
+               << idx << "]->get_ptr();\n";
         writer << "\n";
     }
 

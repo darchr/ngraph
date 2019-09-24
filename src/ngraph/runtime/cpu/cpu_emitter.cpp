@@ -1737,6 +1737,7 @@ namespace ngraph
 
                 writer << "            " << args[0].get_name() << ",\n";
                 writer << "            " << args[1].get_name() << ",\n";
+                writer << "            " << args[2].get_name() << ",\n";
                 writer << "            " << out[0].get_name() << ",\n";
                 writer << "            " << element_count << ",\n";
                 writer << "           {" << join(out[0].get_shape()) << "});\n";
