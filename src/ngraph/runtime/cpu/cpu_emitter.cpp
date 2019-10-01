@@ -2212,19 +2212,30 @@ namespace ngraph
                     //const element::Type& out_et = out[0].get_element_type();
                     size_t bytes = out[0].get_tensor()->size();
                     // Trick using integer arithmetic to round up.
-                    size_t num_elements = (bytes + 64 - 1) / 64;
+                    size_t num_elements = bytes / 64;
+                    size_t extra = bytes % 64 / out[0].get_element_type().size();
+                    std::string output_type = out[0].get_element_type().c_type_string();
 
                     writer.block_begin();
                     // Zero the output vector - rely on the alignment of allocation block
                     // sizes to use AvX 512
-                    writer << "__m512i zero = {0};\n";
-                    writer << "__m512i* output_vector_view = reinterpret_cast<__m512i*>("
-                           << out[0].get_name() << ");\n";
+                    //writer << "__m512i zero = {0};\n";
+                    //writer << "__m512i* output_vector_view = reinterpret_cast<__m512i*>("
+                    //       << out[0].get_name() << ");\n";
 
+                    //writer << "std::cout << " << out[0].get_name() << " << std::endl;\n";
+
+                    //writer << "#pragma omp parallel for\n";
+                    //writer << "for (size_t i = 0; i < " << num_elements << "; i++)\n";
+                    //writer.block_begin();
+                    //writer << "std::cout << i << std::endl;\n";
+                    //writer << "_mm512_stream_si512(&output_vector_view[i], zero);\n";
+                    //writer.block_end();
                     writer << "#pragma omp parallel for\n";
-                    writer << "for (size_t i = 0; i < " << num_elements << "; i++)\n";
+                    writer << "for (size_t i = 0; i < " << shape_size(out[0].get_shape()) << "; i++)\n";
                     writer.block_begin();
-                    writer << "_mm512_stream_si512(&output_vector_view[i], zero);\n";
+                    //writer << "std::cout << i << std::endl;\n";
+                    writer << out[0].get_name() << "[i] = 0;\n";
                     writer.block_end();
 
                     // Now that we've zeroed the output - we emit for loops for each 
