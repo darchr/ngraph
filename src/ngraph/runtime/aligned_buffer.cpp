@@ -47,7 +47,7 @@ runtime::AlignedBuffer::AlignedBuffer(size_t byte_size,
     }
     else
     {
-        m_allocated_buffer = static_cast<char*>(ngraph::ngraph_malloc(allocation_size));
+        m_allocated_buffer = static_cast<char*>(ngraph_malloc(allocation_size));
     }
     m_aligned_buffer = m_allocated_buffer;
     size_t mod = size_t(m_aligned_buffer) % alignment;
