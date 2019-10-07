@@ -1077,14 +1077,13 @@ namespace ngraph
                     // Compute the number of 512 chunks from the number of bytes in the
                     // original array.
                     //
-                    // Use a trick to compute a rounded up integer division so we for sure
-                    // copy everything.
-                    //
                     // Because the default alignment of memory allocations if 4096 bytes,
                     // we do not have to worry about accidentally colliding/clobbering
                     // neighboring data blocks
-                    size_t array_bytes = args[0].get_tensor()->size();
-                    size_t num_elements = (array_bytes + 64 - 1) / 64;
+                    //size_t bytes = args[0].get_tensor()->size();
+                    size_t num_avx_elements = bytes / 64;
+                    size_t num_indices = (num_avx_elements * 64) / args[0].get_tensor()->get_element_type().size();
+                    size_t left_over_bytes = (bytes - (64 * num_avx_elements));
 
                     // Quick check for now. In the future, I'll move this into the Move node
                     // itself. Basically, if we're writing to PMEM, we only want 4 threads
@@ -1101,11 +1100,17 @@ namespace ngraph
                     } else {
                         writer << "#pragma omp parallel for\n";
                     }
-                    writer << "for (size_t i = 0; i < " << num_elements << "; i++)\n";
+                    writer << "for (size_t i = 0; i < " << num_avx_elements << "; i++)\n";
                     writer.block_begin();
                     writer << "__m512i x = _mm512_stream_load_si512(&src[i]);\n";
                     writer << "_mm512_stream_si512(&dst[i], x);\n";
                     writer.block_end();
+                    if (left_over_bytes > 0)
+                    {
+                        writer << "memcpy(" << out[0].get_name() << " + " << num_indices << ", "
+                               << args[0].get_name() << " + " << num_indices << ", "
+                               << left_over_bytes << ");\n";
+                    }
                     writer << "_mm_sfence();\n";
                     writer.block_end();
                 }

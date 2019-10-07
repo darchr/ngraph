@@ -944,6 +944,9 @@ using namespace ngraph::runtime;
                 out.back().get_size(), out.back().get_shape(), out.back().get_element_type()));
         }
 
+        // printf
+        writer << "std::cout << \"Executing: " << node->get_name() << "\" << std::endl << std::endl;\n";
+
         // Emit operation prologue
         if (!node->is_parameter() && !node->is_constant())
         {
@@ -2090,7 +2093,6 @@ shared_ptr<ngraph::runtime::cpu::CPU_CallFrame>
     {
         m_direct_execution = false;
     }
-    std::cout << "Direct Execution: " << m_direct_execution << std::endl;
     if (!m_is_compiled && !m_direct_execution)
     {
         compile(pass_config);
