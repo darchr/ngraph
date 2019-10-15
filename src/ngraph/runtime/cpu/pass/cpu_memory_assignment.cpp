@@ -667,6 +667,7 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
 
     // memory manager for non-cacheable ops, memory allocation will be freed when not longer in use
     ngraph::pass::MemoryManager mm(m_alignment, m_disable_memory_sharing);
+    ngraph::pass::MemoryManager mm_scratchpad(m_alignment, m_disable_memory_sharing);
 
     // More persistent memory support - instantiate another memory manager for dealing with
     // tensors that are marked as persistent
@@ -716,6 +717,10 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
             }
         }
     }
+
+    // Create a record of tensors with pool number == 2, which implies that they should
+    // be placed in a `scratchpad zone`.
+    std::unordered_set<descriptor::Tensor*> scratchpad_tensors;
 
     for (shared_ptr<Node> node : function->get_ordered_ops())
     {
@@ -874,6 +879,13 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                 if (tensor->get_pool_number() == static_cast<size_t>(runtime::cpu::MemoryLocation::PMEM))
                 {
                     offset = mm_persistent.allocate(size);
+                // Otherwise, check if this tensor should be assigned to the `scratchpad`
+                // pool
+                } else if (tensor->get_pool_number() == 2)
+                {
+                    offset = mm_scratchpad.allocate(size);
+                    // Save this as a scratchpad tensor
+                    scratchpad_tensors.insert(tensor); 
                 } else {
                     offset = mm.allocate(size);
                 }
@@ -900,6 +912,9 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
                     if (tensor->get_pool_number() == static_cast<size_t>(runtime::cpu::MemoryLocation::PMEM))
                     {
                         mm_persistent.free(tensor->get_pool_offset());
+                    } else if (tensor->get_pool_number() == 2)
+                    {
+                        mm_scratchpad.free(tensor->get_pool_offset());
                     } else {
                         mm.free(tensor->get_pool_offset());
                     }
@@ -934,6 +949,15 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
         }
     }
 
+    // Do the same for scratchpad items.
+    start = mm.max_allocated();
+    for (descriptor::Tensor* tensor : scratchpad_tensors)
+    {
+        auto new_offset = tensor->get_pool_offset() + start;
+        tensor->set_pool_offset(new_offset);
+    }
+
+
     //std::cout << "cpu_memory_assignemnt: max allocated for mm is "
     //          << mm.max_allocated() << std::endl;
 
@@ -959,6 +983,7 @@ bool runtime::cpu::pass::CPUMemoryAssignment::run_on_function(shared_ptr<ngraph:
     function->set_temporary_pool_size(
             mm.max_allocated()
             + mm_caching.max_allocated()
+            + mm_scratchpad.max_allocated()
         );
     function->set_pmem_pool_size(mm_persistent.max_allocated());
 #endif

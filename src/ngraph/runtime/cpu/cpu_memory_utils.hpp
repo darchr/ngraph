@@ -14,7 +14,8 @@ namespace ngraph
             // A pool number of 1 will then be used for PMEM
             enum class MemoryLocation : std::size_t {
                 DRAM = 0,
-                PMEM = 1
+                PMEM = 1,
+                SCRATCHPAD = 2
             };
         }
     }
