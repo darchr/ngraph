@@ -42,6 +42,11 @@ namespace ngraph
             std::string m_name;
             size_t m_total_microseconds;
             size_t m_call_count;
+
+            void reset() {
+                m_call_count = 0;
+                m_total_microseconds = 0;
+            }
         };
     }
 }

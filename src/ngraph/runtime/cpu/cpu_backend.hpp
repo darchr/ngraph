@@ -84,6 +84,8 @@ namespace ngraph
 
                 std::vector<PerformanceCounter> get_performance_data() const override;
 
+                void reset_counters() override;
+
             private:
                 class FunctionInstance
                 {

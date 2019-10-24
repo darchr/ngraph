@@ -140,6 +140,8 @@ public:
     /// \returns an ngraph::ResultVector of all input parameters
     const ngraph::ResultVector& get_results() const;
 
+    virtual void reset_counters();
+
 protected:
     /// \brief Called at the end of compile to the values to be returned by get_parameters
     ///     and get_results

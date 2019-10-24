@@ -164,6 +164,15 @@ vector<runtime::PerformanceCounter> runtime::cpu::CPU_Executable::get_performanc
     return rc;
 }
 
+void runtime::cpu::CPU_Executable::reset_counters()
+{
+    const FunctionInstance& instance = m_function_instance;
+    if (instance.m_external_function != nullptr)
+    {
+        instance.m_external_function->reset_counters();
+    }
+}
+
 bool runtime::cpu::CPU_Backend::is_supported(const Node& op) const
 {
     return true;

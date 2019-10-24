@@ -139,6 +139,10 @@ vector<runtime::PerformanceCounter> runtime::Executable::get_performance_data() 
     return vector<PerformanceCounter>();
 }
 
+void runtime::Executable::reset_counters()
+{
+}
+
 bool runtime::Backend::is_supported_property(const Property prop) const
 {
     return false;
@@ -147,3 +151,4 @@ bool runtime::Backend::is_supported_property(const Property prop) const
 void runtime::Backend::remove_compiled_function(std::shared_ptr<Executable> exec)
 {
 }
+
