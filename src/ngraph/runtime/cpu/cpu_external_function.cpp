@@ -619,6 +619,19 @@ using namespace ngraph::runtime;
         writer.indent--;
         writer << "}\n";
         writer << "\n";
+
+        writer << "extern \"C\" const void reset_counter(size_t index)\n";
+        writer << "{\n";
+        writer.indent++;
+        writer << "if (index < " << names.size() << ")\n";
+        writer << "{\n";
+        writer.indent++;
+        writer << "timers[index].reset();\n";
+        writer.indent--;
+        writer << "}\n";
+        writer.indent--;
+        writer << "}\n";
+        writer << "\n";
     }
 
     writer << "// Declare all constants\n";
@@ -1971,6 +1984,22 @@ const vector<runtime::PerformanceCounter>& runtime::cpu::CPU_ExternalFunction::g
     }
 #endif
     return m_perf_counters;
+}
+
+void runtime::cpu::CPU_ExternalFunction::reset_counters() {
+    if (m_execution_engine)
+    {
+        auto get_count = m_execution_engine->find_function<size_t()>("get_debug_timer_count");
+        auto reset_counter = m_execution_engine->find_function<void(size_t)>("reset_counter");
+        if (get_count && reset_counter)
+        {
+            size_t count = get_count();
+            for (size_t i = 0; i < count; i++)
+            {
+                reset_counter(i);
+            }
+        }
+    }
 }
 
 void runtime::cpu::CPU_ExternalFunction::write_to_file(const std::string& code,

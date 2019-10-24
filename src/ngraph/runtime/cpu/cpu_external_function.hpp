@@ -145,12 +145,7 @@ namespace ngraph
 
                 const std::vector<PerformanceCounter>& get_perf_counters();
 
-                void reset_counters() {
-                    for (auto counter: m_perf_counters)
-                    {
-                        counter.reset();
-                    }
-                }
+                void reset_counters();
 
 #if defined(NGRAPH_HALIDE)
                 std::unordered_map<std::string, Halide::Func>& get_halide_functions()

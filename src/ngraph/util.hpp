@@ -114,6 +114,12 @@ namespace ngraph
         size_t get_total_microseconds() const;
         size_t get_total_nanoseconds() const;
 
+        void reset()
+        {
+            m_total_count = 0;
+            m_total_time = std::chrono::high_resolution_clock::duration::zero();
+        }
+
     private:
         std::chrono::high_resolution_clock m_clock;
         std::chrono::time_point<std::chrono::high_resolution_clock> m_start_time;
