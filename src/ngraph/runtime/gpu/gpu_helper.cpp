@@ -37,6 +37,32 @@ bool runtime::gpu::can_select_algo(const std::shared_ptr<Node> node)
     return false;
 }
 
+size_t runtime::gpu::get_workspace_tensor_offset(const std::shared_ptr<Node> node)
+{
+    if (runtime::gpu::has_algo(node.get()))
+    {
+        std::shared_ptr<ngraph::descriptor::Tensor> tensor = 
+            runtime::gpu::get_workspace_tensor(node.get());
+
+        return tensor->get_pool_offset();
+    } else {
+        return 0;
+    }
+}
+
+size_t runtime::gpu::get_workspace_tensor_size(const std::shared_ptr<Node> node)
+{
+    if (runtime::gpu::has_algo(node.get()))
+    {
+        std::shared_ptr<ngraph::descriptor::Tensor> tensor = 
+            runtime::gpu::get_workspace_tensor(node.get());
+
+        return tensor->size();
+    } else {
+        return 0;
+    }
+}
+
 /////
 ///// set_algo
 /////

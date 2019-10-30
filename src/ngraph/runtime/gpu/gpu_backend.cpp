@@ -19,6 +19,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cudnn.h>
+#include <iostream>
 
 #include "ngraph/graph_util.hpp"
 #include "ngraph/op/batch_norm.hpp"
@@ -106,7 +107,6 @@ void runtime::gpu::GPU_Backend::BackendContext::bind_cuda_context_to_thread()
 
 runtime::gpu::GPU_Backend::BackendContext::~BackendContext()
 {
-    std::cout << "Cleaning Up Backend Context" << std::endl;
     cublasDestroy(*m_runtime_context->cublas_handle);
     delete m_runtime_context->cublas_handle;
     cudnnDestroy(*m_runtime_context->cudnn_handle);

@@ -157,7 +157,7 @@ size_t runtime::gpu::GPUAllocator::reserve_argspace(const void* data, size_t siz
     // add parameter data to host buffer that will be transfered to device
     size_t offset = m_manager->queue_for_transfer(data, size);
     auto local = std::prev(m_manager->m_argspace_mem.end());
-    std::cout << "C++: Reserving argspace of size: " << size << std::endl;
+    //std::cout << "C++: Reserving argspace of size: " << size << std::endl;
     // return a lambda that will yield the gpu memory address. this
     // should only be evaluated by the runtime invoked primitive
     gpu::memory_primitive mem_primitive = [=]() {
@@ -178,7 +178,7 @@ size_t runtime::gpu::GPUAllocator::reserve_workspace(size_t size, bool zero_init
     {
         return m_manager->m_primitive_emitter->insert([]() { return nullptr; });
     }
-    std::cout << "C++: Reserving workspace of size: " << size << std::endl;
+    //std::cout << "C++: Reserving workspace of size: " << size << std::endl;
 
     size_t offset = m_manager->m_workspace_manager->allocate(size);
     m_active.push(offset);

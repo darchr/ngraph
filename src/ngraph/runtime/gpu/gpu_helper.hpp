@@ -21,6 +21,8 @@ namespace ngraph
             //      for the different algorithms
             // TODO: Assign the algorithm and workspace size for the op.
             bool can_select_algo(const std::shared_ptr<Node> node);
+            size_t get_workspace_tensor_offset(const std::shared_ptr<Node> node);
+            size_t get_workspace_tensor_size(const std::shared_ptr<Node> node);
 
             void set_algo(const std::shared_ptr<Node> node, size_t algo_enum, size_t workspace_size);
             void set_algo(const std::shared_ptr<op::Convolution> node, size_t algo_enum, size_t workspace_size);

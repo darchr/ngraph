@@ -114,8 +114,8 @@ bool runtime::gpu::pass::GPUMemoryLayout::run_on_function(shared_ptr<ngraph::Fun
     function->set_temporary_pool_size(mm.max_allocated());
     function->set_pmem_pool_size(mm_host.max_allocated());
 
-    std::cout << "C++ (GPU Memory Assignment) Temp Pool Size: " << mm.max_allocated() << std::endl;
-    std::cout << "C++ (GPU Memory Assignment) Host Pool Size: " << mm_host.max_allocated() << std::endl;
+    //std::cout << "C++ (GPU Memory Assignment) Temp Pool Size: " << mm.max_allocated() << std::endl;
+    //std::cout << "C++ (GPU Memory Assignment) Host Pool Size: " << mm_host.max_allocated() << std::endl;
 
     return false;
 }
