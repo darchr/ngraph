@@ -252,7 +252,7 @@ std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_op
     for (auto res: results)
     {
         // Pass back CUDNN_STATUS_ALLOC_FAILED so we can return an error
-        if (res.status == CUDNN_STATUS_SUCCESS || res.status == CUDNN_STATUS_ALLOC_FAILED)
+        if (res.status == CUDNN_STATUS_SUCCESS && res.determinism == CUDNN_DETERMINISTIC)
         {
             auto tup = std::tuple<uint32_t, float, size_t, bool>(
                     ngraph::runtime::gpu::to_underlying(res.algo),
@@ -337,9 +337,9 @@ std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_op
     auto& conv_desc = runtime::gpu::get_cudnn_convolution_descriptor(
         padding_below, window_movement_strides, window_dilation_strides, mode, data_type, descriptors);
 
-    std::cout << input_tensor_shape << std::endl;
-    std::cout << output_tensor_shape << std::endl;
-    std::cout << input_filter_shape << std::endl;
+    //std::cout << input_tensor_shape << std::endl;
+    //std::cout << output_tensor_shape << std::endl;
+    //std::cout << input_filter_shape << std::endl;
 
     int num_algos;
     int max_algos = 0;
@@ -363,7 +363,7 @@ std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_op
     std::vector<std::tuple<uint32_t, float, size_t, bool>> return_vec;
     for (auto res: results)
     {
-        if (res.status == CUDNN_STATUS_SUCCESS || res.status == CUDNN_STATUS_ALLOC_FAILED)
+        if (res.status == CUDNN_STATUS_SUCCESS && res.determinism == CUDNN_DETERMINISTIC)
         {
             auto tup = std::tuple<uint32_t, float, size_t, bool>(
                     ngraph::runtime::gpu::to_underlying(res.algo),
@@ -412,9 +412,9 @@ std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_op
         padding_above[i] = static_cast<size_t>(padding_above_diff[i]);
     }
 
-    std::cout << input_tensor_shape_0 << std::endl;
-    std::cout << input_tensor_shape_1 << std::endl;
-    std::cout << output_filter_shape << std::endl;
+    //std::cout << input_tensor_shape_0 << std::endl;
+    //std::cout << input_tensor_shape_1 << std::endl;
+    //std::cout << output_filter_shape << std::endl;
 
     const cudnnDataType_t data_type = get_cudnn_datatype(output_type);
     const cudnnTensorFormat_t tensor_format = CUDNN_TENSOR_NCHW;
@@ -464,12 +464,12 @@ std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_op
     // Algorithm Enum value
     // Run Time
     // Memory Footprint
-    std::cout << "Filters Max Algos: " << max_algos << std::endl;
-    std::cout << "Filters Num Algos: " << num_algos << std::endl;
+    //std::cout << "Filters Max Algos: " << max_algos << std::endl;
+    //std::cout << "Filters Num Algos: " << num_algos << std::endl;
     std::vector<std::tuple<uint32_t, float, size_t, bool>> return_vec;
     for (auto res: results)
     {
-        if (res.status == CUDNN_STATUS_SUCCESS || res.status == CUDNN_STATUS_ALLOC_FAILED)
+        if (res.status == CUDNN_STATUS_SUCCESS && res.determinism == CUDNN_DETERMINISTIC)
         {
             auto tup = std::tuple<uint32_t, float, size_t, bool>(
                     ngraph::runtime::gpu::to_underlying(res.algo),
@@ -480,7 +480,7 @@ std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_op
 
             return_vec.push_back(tup);
         } else {
-            std::cout << "Backward Failed - Status: " << res.status << std::endl;
+            //std::cout << "Backward Failed - Status: " << res.status << std::endl;
         }
     }
 

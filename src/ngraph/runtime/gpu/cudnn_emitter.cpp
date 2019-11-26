@@ -697,7 +697,7 @@ size_t runtime::gpu::CUDNNEmitter::build_primitive(const op::ConvolutionBackprop
     size_t pad_index = std::numeric_limits<size_t>::max();
     size_t slice_index = std::numeric_limits<size_t>::max();
     auto algo_policy = algo_search::EXPLICIT;
-    cudnnConvolutionBwdDataAlgo_t algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+    cudnnConvolutionBwdDataAlgo_t algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
     if (pad_required || is_deconvolution)
     {
         output_shape_padded =
@@ -825,7 +825,7 @@ size_t runtime::gpu::CUDNNEmitter::build_primitive(const op::ConvolutionBackprop
     size_t idx_workspace = std::numeric_limits<size_t>::max();
     size_t pad_index = std::numeric_limits<size_t>::max();
     auto algo_policy = algo_search::EXPLICIT;
-    cudnnConvolutionBwdFilterAlgo_t algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
+    cudnnConvolutionBwdFilterAlgo_t algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     if (pad_required || is_deconvolution)
     {
         input_shape_padded = runtime::gpu::get_padded_shape(
@@ -1468,7 +1468,7 @@ size_t runtime::gpu::CUDNNEmitter::build_convolution_backward_data(
     auto& conv_desc = get_cudnn_convolution_descriptor(
         padding_below, window_movement_strides, window_dilation_strides, mode, data_type);
 
-    cudnnConvolutionBwdDataAlgo_t conv_bwd_data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+    cudnnConvolutionBwdDataAlgo_t conv_bwd_data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
     if (find_algo != algo_search::NONE)
     {
         if (find_algo == algo_search::PRE_SELECTED)
@@ -1583,7 +1583,7 @@ size_t runtime::gpu::CUDNNEmitter::build_convolution_backward_filter(
     auto& conv_desc = get_cudnn_convolution_descriptor(
         padding_below, window_movement_strides, window_dilation_strides, mode, data_type);
 
-    cudnnConvolutionBwdFilterAlgo_t conv_bwd_filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
+    cudnnConvolutionBwdFilterAlgo_t conv_bwd_filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     if (find_algo != algo_search::NONE)
     {
         if (find_algo == algo_search::PRE_SELECTED)

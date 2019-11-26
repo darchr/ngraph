@@ -1350,7 +1350,7 @@ std::string runtime::gpu::GPU_Emitter::emit_Subtract(EMIT_ARGS)
 
 std::string runtime::gpu::GPU_Emitter::emit_Sum(EMIT_ARGS)
 {
-    return runtime::gpu::GPU_Emitter::emit_Sum_0(compiled_function, function_name, node, args, out);
+    return runtime::gpu::GPU_Emitter::emit_Sum_1(compiled_function, function_name, node, args, out);
 }
 
 std::string runtime::gpu::GPU_Emitter::emit_Sum_0(EMIT_ARGS)

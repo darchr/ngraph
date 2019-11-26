@@ -207,7 +207,8 @@ namespace ngraph
                     {
                         auto const& result = perf_results[i];
                         if (result.status == CUDNN_STATUS_SUCCESS &&
-                            result.memory <= workspace_byte)
+                            result.memory <= workspace_byte &&
+                            result.determinism == CUDNN_DETERMINISTIC)
                         {
                             return result.algo;
                         }
