@@ -252,7 +252,11 @@ std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_op
     for (auto res: results)
     {
         // Pass back CUDNN_STATUS_ALLOC_FAILED so we can return an error
+#ifdef NGRAPH_ALLOW_NONDETERMINISM
+        if (res.status == CUDNN_STATUS_SUCCESS)
+#else
         if (res.status == CUDNN_STATUS_SUCCESS && res.determinism == CUDNN_DETERMINISTIC)
+#endif
         {
             auto tup = std::tuple<uint32_t, float, size_t, bool>(
                     ngraph::runtime::gpu::to_underlying(res.algo),
@@ -363,7 +367,11 @@ std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_op
     std::vector<std::tuple<uint32_t, float, size_t, bool>> return_vec;
     for (auto res: results)
     {
+#ifdef NGRAPH_ALLOW_NONDETERMINISM
+        if (res.status == CUDNN_STATUS_SUCCESS)
+#else
         if (res.status == CUDNN_STATUS_SUCCESS && res.determinism == CUDNN_DETERMINISTIC)
+#endif
         {
             auto tup = std::tuple<uint32_t, float, size_t, bool>(
                     ngraph::runtime::gpu::to_underlying(res.algo),
@@ -469,7 +477,11 @@ std::vector<std::tuple<uint32_t, float, size_t, bool>> runtime::gpu::get_algo_op
     std::vector<std::tuple<uint32_t, float, size_t, bool>> return_vec;
     for (auto res: results)
     {
+#ifdef NGRAPH_ALLOW_NONDETERMINISM
+        if (res.status == CUDNN_STATUS_SUCCESS)
+#else
         if (res.status == CUDNN_STATUS_SUCCESS && res.determinism == CUDNN_DETERMINISTIC)
+#endif
         {
             auto tup = std::tuple<uint32_t, float, size_t, bool>(
                     ngraph::runtime::gpu::to_underlying(res.algo),

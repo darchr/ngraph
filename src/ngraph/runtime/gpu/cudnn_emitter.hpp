@@ -206,9 +206,14 @@ namespace ngraph
                     for (auto i = 0; i != perf_results.size(); ++i)
                     {
                         auto const& result = perf_results[i];
+#ifdef NGRAPH_ALLOW_NONDETERMINISM
+                        if (result.status == CUDNN_STATUS_SUCCESS &&
+                            result.memory <= workspace_byte)
+#else
                         if (result.status == CUDNN_STATUS_SUCCESS &&
                             result.memory <= workspace_byte &&
                             result.determinism == CUDNN_DETERMINISTIC)
+#endif
                         {
                             return result.algo;
                         }
