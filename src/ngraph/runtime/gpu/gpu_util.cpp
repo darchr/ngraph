@@ -46,7 +46,7 @@ void runtime::gpu::check_cuda_errors(CUresult err)
 
 void* runtime::gpu::create_gpu_buffer(size_t buffer_size, const void* data)
 {
-    std::cout << "C++: Allocating pool of size: " << buffer_size << std::endl;
+    //std::cout << "C++: Allocating pool of size: " << buffer_size << std::endl;
     void* allocated_buffer_pool;
     if (std::getenv("NGRAPH_GPU_CUDA_MALLOC_MANAGED") != nullptr)
     {
