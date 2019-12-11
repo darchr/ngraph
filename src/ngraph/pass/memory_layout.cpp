@@ -26,6 +26,7 @@
 #include "ngraph/pass/manager.hpp"
 #include "ngraph/pass/memory_layout.hpp"
 #include "ngraph/util.hpp"
+#include "ngraph/backtrace.hpp"
 
 using namespace std;
 using namespace ngraph;
