@@ -45,7 +45,7 @@ namespace ngraph
                                            const NodeVector& deltas) override;
 
         private:
-            bool m_needs_default_layout{false};
+            bool m_needs_default_layout{true};
         };
     }
 }
