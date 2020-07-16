@@ -558,6 +558,13 @@ using namespace ngraph::runtime;
 
 )";
 
+    if (std::getenv("NGRAPH_KERNEL_TIMESTAMPS"))
+    {
+        writer << "#include <iomanip>\n";
+        writer << "#include <ctime>\n";
+        writer << "#include <chrono>\n";
+    }
+
     string pch_header_source = writer.get_code();
 
     // The "dso_handle" symbol is required by __cxa_atexit()
@@ -1038,7 +1045,11 @@ using namespace ngraph::runtime;
                 writer << join(parameter_nodes);
                 writer << ")\n";
                 // printf debugging FTW!
-                //writer << "std::cout << \"Executing: " << node->get_name() << "\\n\";\n";
+                if (std::getenv("NGRAPH_KERNEL_TIMESTAMPS"))
+                {
+                    writer << "std::cout << \"" << node->get_name() <<
+                        " \" << std::chrono::duration_cast<cpu::Timescale>(cpu::Clock::now().time_since_epoch()).count() << \"\\n\";\n";
+                }
             }
 
             // Emit operation body

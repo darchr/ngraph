@@ -208,6 +208,7 @@ namespace ngraph
 #else
         auto ptr = malloc(size);
 #endif
+        std::cout << "Base Pointer " << ptr << " of size " << size << std::endl;
 
         if (size != 0 && !ptr)
         {
